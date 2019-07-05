@@ -1,2 +1,3 @@
 Augmentor
+tqdm
 keras_tqdm
