@@ -1,2 +1,2 @@
 tqdm
-keras_tqdm
+keras-tqdm
