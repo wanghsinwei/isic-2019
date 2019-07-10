@@ -714,6 +714,14 @@ class Pipeline(object):
 
         return _transform
 
+    def perform_operations(self, image):
+        augmented_image = image
+        for operation in self.operations:
+            r = round(random.uniform(0, 1), 1)
+            if r <= operation.probability:
+                augmented_image = operation.perform_operation([augmented_image])[0]
+        return augmented_image
+
     def add_operation(self, operation):
         """
         Add an operation directly to the pipeline. Can be used to add custom
