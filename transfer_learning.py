@@ -1,11 +1,11 @@
-from Augmentor import DataFramePipeline
+from Augmentor import Pipeline
 from Augmentor.Operations import CropPercentageRange
 from keras.layers import Dense, Activation, Flatten, GlobalAveragePooling2D, Dropout
 from keras.models import Sequential, Model
 
-def build_aug_pipeline(train_dataframe, val_dataframe, image_col, category_col, input_size=(224, 224), seed=None):
+def build_aug_pipeline(input_size=(224, 224), seed=None):
     ### Training Data Generator
-    p_train = DataFramePipeline(source_dataframe=train_dataframe, image_col=image_col, category_col=category_col)
+    p_train = Pipeline()
     # Random crop
     p_train.add_operation(CropPercentageRange(probability=1, min_percentage_area=0.8, max_percentage_area=1, centre=False))
     # Rotate an image by either 90, 180, or 270 degrees randomly
@@ -17,16 +17,14 @@ def build_aug_pipeline(train_dataframe, val_dataframe, image_col, category_col, 
     # Flip the image along its horizontal axis
     p_train.flip_left_right(probability=0.5)
     # Random change brightness of an image
-    p_train.random_brightness(probability=1, min_factor=0.9, max_factor=1.1)
+    p_train.random_brightness(probability=0.5, min_factor=0.9, max_factor=1.1)
     # Random change saturation of an image
-    p_train.random_color(probability=1, min_factor=0.9, max_factor=1.1)
+    p_train.random_color(probability=0.5, min_factor=0.9, max_factor=1.1)
     # Set the seed
     p_train.set_seed(seed)
 
     ### Validation Data Generator
-    p_val = DataFramePipeline(source_dataframe=val_dataframe, image_col=image_col, category_col=category_col)
-    # Center crop
-    p_val.crop_centre(probability=1, percentage_area=0.9)
+    p_val = Pipeline()
     # Resize an image
     p_val.resize(probability=1, width=input_size[0], height=input_size[1])
     # Set the seed

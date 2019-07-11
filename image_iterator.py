@@ -71,7 +71,6 @@ class ImageIterator(Iterator):
         batch_x = [None] * len(index_array)
         
         for i, j in enumerate(index_array):
-            # x = self.image_paths[j]
             x = Image.open(self.image_paths[j]) # PIL Image
             if self.augmentation_pipeline:
                 # Note that self.images should not be modified during image augmentation.
@@ -87,8 +86,6 @@ class ImageIterator(Iterator):
                     hash=np.random.randint(1e4),
                     format=self.save_format)
                 img.save(os.path.join(self.save_to_dir, fname))
-                # Save origianl input images
-                # self.images[j].save(os.path.join(self.save_to_dir, 'org_'+fname))
 
         # Converts each PIL Image instance to a Numpy array.
         for i in range(len(batch_x)):
