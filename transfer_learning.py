@@ -10,8 +10,6 @@ def build_aug_pipeline(input_size=(224, 224)):
     p_train.add_operation(CropPercentageRange(probability=1, min_percentage_area=0.8, max_percentage_area=1, centre=False))
     # Rotate an image by either 90, 180, or 270 degrees randomly
     p_train.rotate_random_90(probability=0.5)
-    # Resize an image
-    p_train.resize(probability=1, width=input_size[0], height=input_size[1])
     # Flip the image along its vertical axis
     p_train.flip_top_bottom(probability=0.5)
     # Flip the image along its horizontal axis
@@ -20,6 +18,8 @@ def build_aug_pipeline(input_size=(224, 224)):
     p_train.random_brightness(probability=0.5, min_factor=0.9, max_factor=1.1)
     # Random change saturation of an image
     p_train.random_color(probability=0.5, min_factor=0.9, max_factor=1.1)
+    # Resize an image
+    p_train.resize(probability=1, width=input_size[0], height=input_size[1])
 
     ### Validation Data Generator
     p_val = Pipeline()
