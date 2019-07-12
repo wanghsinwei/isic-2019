@@ -3,7 +3,7 @@ from Augmentor.Operations import CropPercentageRange
 from keras.layers import Dense, Activation, Flatten, GlobalAveragePooling2D, Dropout
 from keras.models import Sequential, Model
 
-def build_aug_pipeline(input_size=(224, 224), seed=None):
+def build_aug_pipeline(input_size=(224, 224)):
     ### Training Data Generator
     p_train = Pipeline()
     # Random crop
@@ -20,15 +20,11 @@ def build_aug_pipeline(input_size=(224, 224), seed=None):
     p_train.random_brightness(probability=0.5, min_factor=0.9, max_factor=1.1)
     # Random change saturation of an image
     p_train.random_color(probability=0.5, min_factor=0.9, max_factor=1.1)
-    # Set the seed
-    p_train.set_seed(seed)
 
     ### Validation Data Generator
     p_val = Pipeline()
     # Resize an image
     p_val.resize(probability=1, width=input_size[0], height=input_size[1])
-    # Set the seed
-    p_val.set_seed(seed)
 
     return p_train, p_val
 
