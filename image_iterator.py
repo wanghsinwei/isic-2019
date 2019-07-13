@@ -28,6 +28,7 @@ class ImageIterator(Iterator):
                  sample_weight=None,
                  seed=None,
                  rescale=None,
+                 pregen_augmented_images=False,
                  preprocessing_function=None,
                  data_format='channels_last',
                  save_to_dir=None,
@@ -38,6 +39,7 @@ class ImageIterator(Iterator):
 
         self.image_paths = image_paths
         self.rescale = rescale
+        self.pregen_augmented_images = pregen_augmented_images
         self.preprocessing_function = preprocessing_function
         self.dtype = dtype
 
@@ -65,17 +67,24 @@ class ImageIterator(Iterator):
         self.save_prefix = save_prefix
         self.save_format = save_format
 
+        if self.pregen_augmented_images:
+            self.augmented_images = self._generate_augmented_images()
+
         super(ImageIterator, self).__init__(len(image_paths), batch_size, shuffle, seed)
 
     def _get_batches_of_transformed_samples(self, index_array):
         batch_x = [None] * len(index_array)
-        
-        for i, j in enumerate(index_array):
-            x = Image.open(self.image_paths[j]) # PIL Image
-            if self.augmentation_pipeline:
-                # Note that self.images should not be modified during image augmentation.
-                x = self.augmentation_pipeline.perform_operations(x)
-            batch_x[i] = x
+
+        if self.pregen_augmented_images:
+            # Use augmented images directly
+            for i, j in enumerate(index_array):
+                batch_x[i] = self.augmented_images[j]
+        else:
+            for i, j in enumerate(index_array):
+                x = Image.open(self.image_paths[j]) # PIL Image
+                if self.augmentation_pipeline:
+                    x = self.augmentation_pipeline.perform_operations(x)
+                batch_x[i] = x
 
         if self.save_to_dir:
             for i, j in enumerate(index_array):
@@ -91,7 +100,7 @@ class ImageIterator(Iterator):
         for i in range(len(batch_x)):
             img = batch_x[i]
             img = img_to_array(img, data_format=self.data_format, dtype=self.dtype)
-            img = self.standardize(img)
+            img = self._standardize(img)
             batch_x[i] = np.expand_dims(img, axis=0)
 
         # All images dimensions in the batch match exactly
@@ -103,7 +112,7 @@ class ImageIterator(Iterator):
             output += (self.sample_weight[index_array],)
         return output
 
-    def standardize(self, x):
+    def _standardize(self, x):
         """Applies the normalization configuration in-place to a batch of inputs.
         `x` is changed in-place since the function is mainly used internally
         to standarize images and feed them to your network. If a copy of `x`
@@ -123,3 +132,14 @@ class ImageIterator(Iterator):
             x *= self.rescale
 
         return x
+
+    def _generate_augmented_images(self):
+        augmented_images = []
+
+        for i in range(len(self.image_paths)):
+            img = Image.open(self.image_paths[i])
+            if self.augmentation_pipeline:
+                img = self.augmentation_pipeline.perform_operations(img)
+            augmented_images.append(img)
+        
+        return augmented_images
