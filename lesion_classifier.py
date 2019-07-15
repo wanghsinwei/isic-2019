@@ -56,8 +56,8 @@ class LesionClassifier():
 
         ### Image Augmentation Pipeline for Validation Set
         p_val = Pipeline()
-        # Center Crop
-        p_val.crop_centre(probability=1, percentage_area=0.9)
+        # # Center Crop
+        # p_val.crop_centre(probability=1, percentage_area=0.9)
         # Resize the image to the desired input size of the model
         p_val.resize(probability=1, width=self.input_size[0], height=self.input_size[1])
         print('Image Augmentation Pipeline for Validation Set')
@@ -88,7 +88,7 @@ class LesionClassifier():
             shuffle=True,
             rescale=self.rescale,
             preprocessing_function=self.preprocessing_func,
-            pregen_augmented_images=True, # Since the augmentation pipeline only contains center crop and resize operations.
+            pregen_augmented_images=True, # Since there is no randomness in the augmentation pipeline.
             data_format=self.image_data_format
         )
 
@@ -135,16 +135,16 @@ class LesionClassifier():
             verbose=1,
             save_best_only=True)
         
-        # Callback that streams epoch results to a csv file.
-        csv_logger = CSVLogger("logs/{}.training.csv".format(model_name), append=True)
-        
         # Reduce learning rate when the validation loss has stopped improving.
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, min_lr=1e-5, verbose=1)
 
         # Stop training when the validation loss has stopped improving.
         early_stop = EarlyStopping(monitor='val_loss', patience=22, verbose=1)
+
+        # Callback that streams epoch results to a csv file.
+        csv_logger = CSVLogger(filename="logs/{}.training.csv".format(model_name), append=False)
         
-        return [checkpoint_balanced_acc, checkpoint_balanced_acc_latest, checkpoint_loss, csv_logger, reduce_lr, early_stop]
+        return [checkpoint_balanced_acc, checkpoint_balanced_acc_latest, checkpoint_loss, reduce_lr, early_stop, csv_logger]
 
     @property
     def model(self):
