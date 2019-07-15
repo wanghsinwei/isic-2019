@@ -1,2 +1,6 @@
 tqdm
 packaging
+pandas
+matplotlib
+sklearn
+keras
