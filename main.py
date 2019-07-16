@@ -18,8 +18,9 @@ def main():
     parser.add_argument('--epoch', type=int, help='Number of epochs', required=True)
     parser.add_argument('--vanilla', dest='vanilla', action='store_true', help='Vanilla CNN')
     parser.add_argument('--transfer', dest='transfer_learning', action='store_true', help='Transfer Learning')
+    parser.add_argument('--finetune', dest='fine_tuning', action='store_true', help='Fine-Tuning Transfer Learning')
     args = parser.parse_args()
-    # print(args)
+    print(args)
     # return
 
     data_folder = args.data
@@ -35,7 +36,7 @@ def main():
     if args.vanilla:
         train_vanilla(df_train, df_val, len(category_names), class_weight_dict, batch_size, epoch_num)
     if args.transfer_learning:
-        train_transfer_learning(df_train, df_val, len(category_names), class_weight_dict, batch_size, epoch_num)
+        train_transfer_learning(df_train, df_val, len(category_names), class_weight_dict, batch_size, epoch_num, args.fine_tuning)
 
 def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch_size, epoch_num):
     input_size = (224, 224)
@@ -58,24 +59,24 @@ def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch
     classifier.train(epoch_num=epoch_num, class_weight=class_weight_dict, workers=workers)
 
 
-def train_transfer_learning(df_train, df_val, known_category_num, class_weight_dict, batch_size, epoch_num):
+def train_transfer_learning(df_train, df_val, known_category_num, class_weight_dict, batch_size, epoch_num, fine_tuning=True):
     workers = os.cpu_count()
 
     base_model_params = [
         BaseModelParam(module_name='keras.applications.densenet',
                     class_name='DenseNet201',
                     input_size=(224, 224),
-                    layers_trainable=False,
+                    layers_trainable=fine_tuning,
                     preprocessing_func=preprocess_input_densenet),
         BaseModelParam(module_name='keras.applications.xception',
                     class_name='Xception',
                     input_size=(299, 299),
-                    layers_trainable=False,
+                    layers_trainable=fine_tuning,
                     preprocessing_func=preprocess_input_xception),
         BaseModelParam(module_name='keras.applications.nasnet',
                     class_name='NASNetLarge',
                     input_size=(331, 331),
-                    layers_trainable=False,
+                    layers_trainable=fine_tuning,
                     preprocessing_func=preprocess_input_nasnet)
     ]
 
