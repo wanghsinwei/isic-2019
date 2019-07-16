@@ -1,4 +1,4 @@
-from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D, Dropout, Flatten, Dense
+from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D, Dropout, Dense
 from keras.models import Sequential
 from keras.optimizers import Adam
 from lesion_classifier import LesionClassifier

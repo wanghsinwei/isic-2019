@@ -1,6 +1,7 @@
 """Utilities for real-time data augmentation on image data.
 Refer to the following files
     https://github.com/keras-team/keras-preprocessing/blob/master/keras_preprocessing/image/numpy_array_iterator.py
+    https://github.com/keras-team/keras-preprocessing/blob/master/keras_preprocessing/image/image_data_generator.py
     https://github.com/keras-team/keras-preprocessing/blob/master/keras_preprocessing/image/iterator.py
     https://github.com/keras-team/keras-preprocessing/blob/master/keras_preprocessing/image/utils.py
 """

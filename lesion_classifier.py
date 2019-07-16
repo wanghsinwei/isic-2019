@@ -56,8 +56,8 @@ class LesionClassifier():
 
         ### Image Augmentation Pipeline for Validation Set
         p_val = Pipeline()
-        # # Center Crop
-        # p_val.crop_centre(probability=1, percentage_area=0.9)
+        # Center Crop
+        p_val.crop_centre(probability=1, percentage_area=0.9)
         # Resize the image to the desired input size of the model
         p_val.resize(probability=1, width=self.input_size[0], height=self.input_size[1])
         print('Image Augmentation Pipeline for Validation Set')
@@ -139,7 +139,7 @@ class LesionClassifier():
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, min_lr=1e-5, verbose=1)
 
         # Stop training when the validation loss has stopped improving.
-        early_stop = EarlyStopping(monitor='val_loss', patience=22, verbose=1)
+        early_stop = EarlyStopping(monitor='val_loss', patience=25, verbose=1)
 
         # Callback that streams epoch results to a csv file.
         csv_logger = CSVLogger(filename="logs/{}.training.csv".format(model_name), append=False)

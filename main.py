@@ -16,9 +16,8 @@ def main():
     parser.add_argument('data', metavar='DIR', help='path to data foler')
     parser.add_argument('--batchsize', type=int, help='Batch size (default: %(default)s)', default=40)
     parser.add_argument('--epoch', type=int, help='Number of epochs', required=True)
-    model_group = parser.add_mutually_exclusive_group(required=True)
-    model_group.add_argument('--vanilla', dest='vanilla', action='store_true', help='Vanilla CNN')
-    model_group.add_argument('--transfer', dest='transfer_learning', action='store_true', help='Transfer Learning')
+    parser.add_argument('--vanilla', dest='vanilla', action='store_true', help='Vanilla CNN')
+    parser.add_argument('--transfer', dest='transfer_learning', action='store_true', help='Transfer Learning')
     args = parser.parse_args()
     # print(args)
     # return
@@ -35,7 +34,7 @@ def main():
 
     if args.vanilla:
         train_vanilla(df_train, df_val, len(category_names), class_weight_dict, batch_size, epoch_num)
-    else:
+    if args.transfer_learning:
         train_transfer_learning(df_train, df_val, len(category_names), class_weight_dict, batch_size, epoch_num)
 
 def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch_size, epoch_num):
@@ -83,9 +82,9 @@ def train_transfer_learning(df_train, df_val, known_category_num, class_weight_d
     for model_param in base_model_params:
         classifier = TransferLearnClassifier(
             base_model_param=model_param,
-            fc_layers=[1024],
+            fc_layers=[2048, 1024, 512],
             num_classes=known_category_num,
-            dropout=0.3,
+            dropout=0.5,
             batch_size=batch_size,
             image_data_format=K.image_data_format(),
             metrics=[balanced_accuracy, 'accuracy'],

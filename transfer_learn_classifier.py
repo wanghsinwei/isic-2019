@@ -12,7 +12,7 @@ class TransferLearnClassifier(LesionClassifier):
         base_model_param: Instance of `BaseModelParam`.
     """
 
-    def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=0.3, batch_size=40, image_data_format='channels_last', metrics=None,
+    def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=40, image_data_format='channels_last', metrics=None,
         image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         if num_classes is None:
@@ -21,7 +21,11 @@ class TransferLearnClassifier(LesionClassifier):
         # Dynamically create an instance of base model
         module = import_module(base_model_param.module_name)
         class_ = getattr(module, base_model_param.class_name)
-        base_model = class_(include_top=False, weights='imagenet')
+        if image_data_format == 'channels_last':
+            input_shape = (base_model_param.input_size[0], base_model_param.input_size[1], 3)
+        else:
+            input_shape = (3, base_model_param.input_size[0], base_model_param.input_size[1])
+        base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape)
 
         self._model_name = base_model_param.class_name
 
@@ -35,7 +39,8 @@ class TransferLearnClassifier(LesionClassifier):
         for fc in fc_layers:
             # A fully-connected layer
             x = Dense(fc, activation='relu')(x) 
-            x = Dropout(dropout)(x)
+            if dropout is not None:
+                x = Dropout(rate=dropout)(x)
 
         # Final layer with softmax activation
         predictions = Dense(num_classes, activation='softmax')(x) 
