@@ -83,9 +83,9 @@ def train_transfer_learning(df_train, df_val, known_category_num, class_weight_d
     for model_param in base_model_params:
         classifier = TransferLearnClassifier(
             base_model_param=model_param,
-            fc_layers=[2048, 1024, 512],
+            fc_layers=[],
             num_classes=known_category_num,
-            dropout=0.5,
+            dropout=None,
             batch_size=batch_size,
             image_data_format=K.image_data_format(),
             metrics=[balanced_accuracy, 'accuracy'],
