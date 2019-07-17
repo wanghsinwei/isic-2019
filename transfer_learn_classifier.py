@@ -34,8 +34,8 @@ class TransferLearnClassifier(LesionClassifier):
             layer.trainable = base_model_param.layers_trainable
 
         x = base_model.output
-        x = Flatten()(x)
-        # x = GlobalAveragePooling2D()(x)
+        # x = Flatten()(x)
+        x = GlobalAveragePooling2D()(x)
         for fc in fc_layers:
             # A fully-connected layer
             x = Dense(fc, activation='relu')(x) 
@@ -60,3 +60,7 @@ class TransferLearnClassifier(LesionClassifier):
     @property
     def model(self):
         return self._model
+
+    @property
+    def model_name(self):
+        return self._model_name

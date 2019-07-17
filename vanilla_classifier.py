@@ -31,6 +31,9 @@ class VanillaClassifier(LesionClassifier):
         self._model.add(Conv2D(filters=128, kernel_size=3, padding='same', activation='relu'))
         self._model.add(MaxPooling2D(pool_size=2))
 
+        self._model.add(Conv2D(filters=256, kernel_size=3, padding='same', activation='relu'))
+        self._model.add(MaxPooling2D(pool_size=2))
+
         self._model.add(Dropout(rate=0.3))
         self._model.add(GlobalAveragePooling2D())
         self._model.add(Dense(num_classes, activation='softmax'))
