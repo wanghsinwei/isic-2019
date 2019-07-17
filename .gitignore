@@ -105,3 +105,7 @@ venv.bak/
 
 # Visual Studio Code
 .vscode/
+
+# Outputs of Training Models
+logs/
+saved_models/
