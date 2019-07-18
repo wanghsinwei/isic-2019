@@ -17,11 +17,10 @@ def main():
     parser.add_argument('--batchsize', type=int, help='Batch size (default: %(default)s)', default=40)
     parser.add_argument('--epoch', type=int, help='Number of epochs', required=True)
     parser.add_argument('--vanilla', dest='vanilla', action='store_true', help='Vanilla CNN')
-    parser.add_argument('--transfer', dest='transfer_learning', action='store_true', help='Transfer Learning')
+    parser.add_argument('--transfer', dest='transfer_models', nargs='*', help='Models for Transfer Learning')
     parser.add_argument('--finetune', dest='fine_tuning', action='store_true', help='Fine-Tuning Transfer Learning')
     args = parser.parse_args()
     print(args)
-    # return
 
     data_folder = args.data
     batch_size = args.batchsize
@@ -33,10 +32,37 @@ def main():
     df_train, df_val = train_validation_split(df_ground_truth)
     class_weight_dict = compute_class_weight_dict(df_train)
 
+    # Vanilla CNN
     if args.vanilla:
         train_vanilla(df_train, df_val, len(category_names), class_weight_dict, batch_size, epoch_num)
-    if args.transfer_learning:
-        train_transfer_learning(df_train, df_val, len(category_names), class_weight_dict, batch_size, epoch_num, args.fine_tuning)
+    
+    # Transfer Learning
+    if args.transfer_models:
+        model_param_map = get_transfer_model_param_map(args.fine_tuning)
+        base_model_params = [model_param_map[x] for x in args.transfer_models]
+        train_transfer_learning(base_model_params, df_train, df_val, len(category_names), class_weight_dict, batch_size, epoch_num)
+
+
+def get_transfer_model_param_map(fine_tuning):
+    base_model_params = {
+        'DenseNet201': BaseModelParam(module_name='keras.applications.densenet',
+                                      class_name='DenseNet201',
+                                      input_size=(224, 224),
+                                      layers_trainable=fine_tuning,
+                                      preprocessing_func=preprocess_input_densenet),
+        'Xception': BaseModelParam(module_name='keras.applications.xception',
+                                   class_name='Xception',
+                                   input_size=(299, 299),
+                                   layers_trainable=fine_tuning,
+                                   preprocessing_func=preprocess_input_xception),
+        'NASNetLarge': BaseModelParam(module_name='keras.applications.nasnet',
+                                      class_name='NASNetLarge',
+                                      input_size=(331, 331),
+                                      layers_trainable=fine_tuning,
+                                      preprocessing_func=preprocess_input_nasnet)
+    }
+    return base_model_params
+
 
 def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch_size, epoch_num):
     input_size = (224, 224)
@@ -56,29 +82,12 @@ def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch
         categories_val=np_utils.to_categorical(df_val['category'], num_classes=known_category_num)
     )
     classifier.model.summary()
+    print('Begin to train Vanilla CNN')
     classifier.train(epoch_num=epoch_num, class_weight=class_weight_dict, workers=workers)
 
 
-def train_transfer_learning(df_train, df_val, known_category_num, class_weight_dict, batch_size, epoch_num, fine_tuning=True):
+def train_transfer_learning(base_model_params, df_train, df_val, known_category_num, class_weight_dict, batch_size, epoch_num):
     workers = os.cpu_count()
-
-    base_model_params = [
-        BaseModelParam(module_name='keras.applications.densenet',
-                    class_name='DenseNet201',
-                    input_size=(224, 224),
-                    layers_trainable=fine_tuning,
-                    preprocessing_func=preprocess_input_densenet),
-        BaseModelParam(module_name='keras.applications.xception',
-                    class_name='Xception',
-                    input_size=(299, 299),
-                    layers_trainable=fine_tuning,
-                    preprocessing_func=preprocess_input_xception),
-        BaseModelParam(module_name='keras.applications.nasnet',
-                    class_name='NASNetLarge',
-                    input_size=(331, 331),
-                    layers_trainable=fine_tuning,
-                    preprocessing_func=preprocess_input_nasnet)
-    ]
 
     for model_param in base_model_params:
         classifier = TransferLearnClassifier(
@@ -90,11 +99,14 @@ def train_transfer_learning(df_train, df_val, known_category_num, class_weight_d
             image_data_format=K.image_data_format(),
             metrics=[balanced_accuracy, 'accuracy'],
             image_paths_train=df_train['path'].tolist(),
-            categories_train=np_utils.to_categorical(df_train['category'], num_classes=known_category_num),
+            categories_train=np_utils.to_categorical(
+                df_train['category'], num_classes=known_category_num),
             image_paths_val=df_val['path'].tolist(),
-            categories_val=np_utils.to_categorical(df_val['category'], num_classes=known_category_num)
+            categories_val=np_utils.to_categorical(
+                df_val['category'], num_classes=known_category_num)
         )
         # classifier.model.summary()
+        print("Begin to train {}".format(model_param.class_name))
         classifier.train(epoch_num=epoch_num, class_weight=class_weight_dict, workers=workers)
 
 if __name__ == '__main__':
