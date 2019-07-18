@@ -109,3 +109,4 @@ venv.bak/
 # Outputs of Training Models
 logs/
 saved_models/
+predict_results/
