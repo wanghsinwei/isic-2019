@@ -3,6 +3,7 @@ import os
 # from keras.applications.densenet import DenseNet201, preprocess_input as preprocess_input_densenet
 from keras.applications.xception import Xception, preprocess_input as preprocess_input_xception
 from keras.applications.nasnet import NASNetLarge, preprocess_input as preprocess_input_nasnet
+from keras.applications.inception_resnet_v2 import InceptionResNetV2, preprocess_input as preprocess_input_resnet_v2
 from utils import preprocess_input as preprocess_input_trainset
 from keras import backend as K
 from keras.utils import np_utils
@@ -60,7 +61,12 @@ def get_transfer_model_param_map(fine_tuning):
                                       class_name='NASNetLarge',
                                       input_size=(331, 331),
                                       layers_trainable=fine_tuning,
-                                      preprocessing_func=preprocess_input_nasnet)
+                                      preprocessing_func=preprocess_input_nasnet),
+        'InceptionResNetV2': BaseModelParam(module_name='keras.applications.inception_resnet_v2',
+                                      class_name='InceptionResNetV2',
+                                      input_size=(299, 299),
+                                      layers_trainable=fine_tuning,
+                                      preprocessing_func=preprocess_input_resnet_v2)
     }
     return base_model_params
 
