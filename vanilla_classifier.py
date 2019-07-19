@@ -11,7 +11,7 @@ class VanillaClassifier(LesionClassifier):
         base_model_param: Instance of `BaseModelParam`.
     """
 
-    def __init__(self, input_size=(224, 224), image_data_format='channels_last', num_classes=None, batch_size=40, rescale=None,
+    def __init__(self, input_size=(224, 224), image_data_format='channels_last', num_classes=None, batch_size=40, rescale=None, preprocessing_func=None,
         metrics=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         if num_classes is None:
@@ -41,7 +41,7 @@ class VanillaClassifier(LesionClassifier):
         self._model.compile(optimizer=Adam(lr=1e-3), loss='categorical_crossentropy', metrics=metrics)
 
         super().__init__(
-            input_size=input_size, rescale=rescale,
+            input_size=input_size, rescale=rescale, preprocessing_func=preprocessing_func,
             image_data_format=image_data_format, batch_size=batch_size,
             image_paths_train=image_paths_train, categories_train=categories_train,
             image_paths_val=image_paths_val, categories_val=categories_val)

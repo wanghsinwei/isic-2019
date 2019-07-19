@@ -1,8 +1,9 @@
 import argparse
 import os
-from keras.applications.densenet import DenseNet201, preprocess_input as preprocess_input_densenet
-from keras.applications.xception  import Xception, preprocess_input as preprocess_input_xception
+# from keras.applications.densenet import DenseNet201, preprocess_input as preprocess_input_densenet
+from keras.applications.xception import Xception, preprocess_input as preprocess_input_xception
 from keras.applications.nasnet import NASNetLarge, preprocess_input as preprocess_input_nasnet
+from utils import preprocess_input as preprocess_input_trainset
 from keras import backend as K
 from keras.utils import np_utils
 from data import load_isic_data, train_validation_split, compute_class_weight_dict
@@ -49,7 +50,7 @@ def get_transfer_model_param_map(fine_tuning):
                                       class_name='DenseNet201',
                                       input_size=(224, 224),
                                       layers_trainable=fine_tuning,
-                                      preprocessing_func=preprocess_input_densenet),
+                                      preprocessing_func=preprocess_input_trainset),
         'Xception': BaseModelParam(module_name='keras.applications.xception',
                                    class_name='Xception',
                                    input_size=(299, 299),
@@ -66,7 +67,6 @@ def get_transfer_model_param_map(fine_tuning):
 
 def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch_size, epoch_num):
     input_size = (224, 224)
-    rescale=1./255
     workers = os.cpu_count()
 
     classifier = VanillaClassifier(
@@ -74,7 +74,8 @@ def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch
         image_data_format=K.image_data_format(),
         num_classes=known_category_num,
         batch_size=batch_size,
-        rescale=rescale,
+        # rescale=1./255,
+        preprocessing_func=preprocess_input_xception,
         metrics=[balanced_accuracy, 'accuracy'],
         image_paths_train=df_train['path'].tolist(),
         categories_train=np_utils.to_categorical(df_train['category'], num_classes=known_category_num),
