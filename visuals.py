@@ -21,6 +21,24 @@ def plot_complexity_graph(csv_file, title=None, figsize=(20, 5)):
     ax2.set(xlabel='epoch', ylabel='Balanced Accuracy')
     ax2.legend()
 
+def plot_grouped_2bars(scalars, scalarlabels, xticklabels):
+    x = np.arange(len(xticklabels))  # the label locations
+    width = 0.35  # the width of the bars
+
+    # Create grouped bar chart
+    fig, ax = plt.subplots(figsize=(10, 5))
+    fig.patch.set_facecolor('white')
+    rects1 = ax.bar(x - width/2, scalars[0], width, label=scalarlabels[0])
+    rects2 = ax.bar(x + width/2, scalars[1], width, label=scalarlabels[1])
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_xticks(x)
+    ax.set_xticklabels(xticklabels)
+    ax.legend()
+    autolabel(ax, rects1)
+    autolabel(ax, rects2)
+    fig.tight_layout()
+
 def autolabel(ax, rects):
     """
     Attach a text label above each bar in *rects*, displaying its height.
