@@ -14,7 +14,7 @@ class TransferLearnClassifier(LesionClassifier):
     """
 
     def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=40, image_data_format='channels_last', metrics=None,
-        image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
+        allow_multi_gpu=False, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         if num_classes is None:
             raise ValueError('num_classes cannot be None')
@@ -49,12 +49,16 @@ class TransferLearnClassifier(LesionClassifier):
         model = Model(inputs=base_model.input, outputs=predictions)
         self._model_for_checkpoint = model
 
-        try:
-            self._model = multi_gpu_model(model, cpu_relocation=True)
-            print("Training using multiple GPUs.")
-        except ValueError:
+        if allow_multi_gpu:
+            try:
+                self._model = multi_gpu_model(model, cpu_relocation=True)
+                print("Training using multiple GPUs.")
+            except ValueError:
+                self._model = model
+                print("Training using single GPU or CPU.")
+        else:
             self._model = model
-            print("Training using single GPU or CPU.")
+            print("Not allow multiple GPUs.")
 
         self._model.compile(optimizer=Adam(lr=1e-3), loss='categorical_crossentropy', metrics=metrics)
 
