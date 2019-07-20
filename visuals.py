@@ -43,7 +43,8 @@ def plot_grouped_2bars(scalars, scalarlabels, xticklabels, title=None):
 def autolabel(ax, rects):
     """
     Attach a text label above each bar in *rects*, displaying its height.
-    Ref: https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/barchart.html#sphx-glr-gallery-lines-bars-and-markers-barchart-py
+    # References
+        https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/barchart.html#sphx-glr-gallery-lines-bars-and-markers-barchart-py
     """
     for rect in rects:
         height = rect.get_height()
@@ -58,7 +59,8 @@ def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title=None, 
     """
     This function plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
-    Ref: https://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
+    # References
+        https://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
     """
 
     # Compute confusion matrix
@@ -79,8 +81,6 @@ def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title=None, 
 def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", grid=True, **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels.
-    Ref: https://matplotlib.org/3.1.0/gallery/images_contours_and_fields/image_annotated_heatmap.html
-
     Parameters
     ----------
     data
@@ -98,6 +98,8 @@ def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", gri
         The label for the colorbar.  Optional.
     **kwargs
         All other arguments are forwarded to `imshow`.
+    # References
+        https://matplotlib.org/3.1.0/gallery/images_contours_and_fields/image_annotated_heatmap.html
     """
 
     if not ax:

@@ -18,7 +18,8 @@ def paths_to_tensor(img_paths, size=(224, 224)):
 def calculate_mean_std(img_paths):
     """
     Calculate the image per channel mean and standard deviation.
-    Ref: https://gist.github.com/jdhao/9a86d4b9e4f79c5330d54de991461fd6
+    # References
+        https://gist.github.com/jdhao/9a86d4b9e4f79c5330d54de991461fd6
     """
     
     # Number of channels of the dataset image, 3 for color jpg, 1 for grayscale img
@@ -45,12 +46,13 @@ def calculate_mean_std(img_paths):
 
 def preprocess_input(x, data_format=None, **kwargs):
     """Preprocesses a numpy array encoding a batch of images. Each image is normalized by subtracting the mean and dividing by the standard deviation channel-wise.
-    Ref: https://github.com/keras-team/keras-applications/blob/master/keras_applications/imagenet_utils.py
     # Arguments
         x: a 3D or 4D numpy array consists of RGB values within [0, 255].
         data_format: data format of the image tensor.
     # Returns
         Preprocessed array.
+    # References
+        https://github.com/keras-team/keras-applications/blob/master/keras_applications/imagenet_utils.py
     """
     if not issubclass(x.dtype.type, np.floating):
         x = x.astype(K.floatx(), copy=False)

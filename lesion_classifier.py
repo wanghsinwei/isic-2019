@@ -7,6 +7,7 @@ from keras.optimizers import Adam
 from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
 import keras.backend as K
 import tensorflow as tf
+from callbacks import MyModelCheckpoint
 
 class LesionClassifier():
     """Base class of skin lesion classifier.
@@ -140,19 +141,22 @@ class LesionClassifier():
         if not os.path.exists('logs'):
             os.makedirs('logs')
         
-        checkpoint_balanced_acc = ModelCheckpoint(
+        checkpoint_balanced_acc = MyModelCheckpoint(
+            model=self.model_for_checkpoint,
             filepath="saved_models/{}_best_balanced_acc.hdf5".format(model_name),
             monitor='val_balanced_accuracy',
             verbose=1,
             save_best_only=True)
         
-        checkpoint_balanced_acc_latest = ModelCheckpoint(
+        checkpoint_balanced_acc_latest = MyModelCheckpoint(
+            model=self.model_for_checkpoint,
             filepath="saved_models/{}_latest_balanced_acc.hdf5".format(model_name),
             monitor='val_balanced_accuracy',
             verbose=1,
             save_best_only=False)
 
-        checkpoint_loss = ModelCheckpoint(
+        checkpoint_loss = MyModelCheckpoint(
+            model=self.model_for_checkpoint,
             filepath="saved_models/{}_best_loss.hdf5".format(model_name),
             monitor='val_loss',
             verbose=1,
@@ -174,6 +178,14 @@ class LesionClassifier():
         """CNN Model"""
         raise NotImplementedError(
             '`model` property method has not been implemented in {}.'
+            .format(type(self).__name__)
+        )
+
+    @property
+    def model_for_checkpoint(self):
+        """Model for MyModelCheckpoint"""
+        raise NotImplementedError(
+            '`model_for_checkpoint` property method has not been implemented in {}.'
             .format(type(self).__name__)
         )
 

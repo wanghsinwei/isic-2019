@@ -1,4 +1,3 @@
-# Ref: https://stackoverflow.com/a/45947435/2437361
 import keras.backend as K
 import tensorflow as tf
 
@@ -6,6 +5,8 @@ def balanced_accuracy(y_true, y_pred):
     """
     Calculates the mean of the per-class accuracies.
     Same as sklearn.metrics.balanced_accuracy_score and sklearn.metrics.recall_score with macro average
+    # References
+        https://stackoverflow.com/a/45947435/2437361
     """
     y_true_argmax = K.argmax(y_true, axis=1)
     y_pred_argmax = K.argmax(y_pred, axis=1)

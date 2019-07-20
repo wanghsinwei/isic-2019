@@ -4,6 +4,7 @@ from base_model_param import BaseModelParam
 from keras.layers import Dense, Activation, Flatten, GlobalAveragePooling2D, Dropout
 from keras.models import Model
 from keras.optimizers import Adam
+from keras.utils import multi_gpu_model
 
 class TransferLearnClassifier(LesionClassifier):
     """Skin lesion classifier based on transfer learning.
@@ -45,7 +46,16 @@ class TransferLearnClassifier(LesionClassifier):
         # Final layer with softmax activation
         predictions = Dense(num_classes, activation='softmax')(x) 
         
-        self._model = Model(inputs=base_model.input, outputs=predictions)
+        model = Model(inputs=base_model.input, outputs=predictions)
+        self._model_for_checkpoint = model
+
+        try:
+            self._model = multi_gpu_model(model, cpu_relocation=True)
+            print("Training using multiple GPUs.")
+        except ValueError:
+            self._model = model
+            print("Training using single GPU or CPU.")
+
         self._model.compile(optimizer=Adam(lr=1e-3), loss='categorical_crossentropy', metrics=metrics)
 
         super().__init__(
@@ -60,6 +70,10 @@ class TransferLearnClassifier(LesionClassifier):
     @property
     def model(self):
         return self._model
+
+    @property
+    def model_for_checkpoint(self):
+        return self._model_for_checkpoint
 
     @property
     def model_name(self):

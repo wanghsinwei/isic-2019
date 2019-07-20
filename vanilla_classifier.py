@@ -38,6 +38,7 @@ class VanillaClassifier(LesionClassifier):
         self._model.add(GlobalAveragePooling2D())
         self._model.add(Dense(num_classes, activation='softmax'))
 
+        self._model_for_checkpoint = self._model
         self._model.compile(optimizer=Adam(lr=1e-3), loss='categorical_crossentropy', metrics=metrics)
 
         super().__init__(
@@ -52,6 +53,10 @@ class VanillaClassifier(LesionClassifier):
     @property
     def model(self):
         return self._model
+
+    @property
+    def model_for_checkpoint(self):
+        return self._model_for_checkpoint
 
     @property
     def model_name(self):
