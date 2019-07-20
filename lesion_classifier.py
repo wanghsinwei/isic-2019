@@ -15,11 +15,14 @@ class LesionClassifier():
         batch_size: Integer, size of a batch.
         image_data_format: String, either 'channels_first' or 'channels_last'.
     """
-    def __init__(self, input_size, image_data_format, batch_size=32, rescale=None, preprocessing_func=None,
+    def __init__(self, input_size, image_data_format=None, batch_size=32, rescale=None, preprocessing_func=None,
         num_classes=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         self.input_size = input_size
-        self.image_data_format = image_data_format
+        if image_data_format is None:
+            self.image_data_format = K.image_data_format()
+        else:
+            self.image_data_format = image_data_format
         self.batch_size = batch_size
         self.rescale = rescale
         self.preprocessing_func = preprocessing_func

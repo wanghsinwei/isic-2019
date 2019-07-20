@@ -12,6 +12,7 @@ from __future__ import print_function
 import numpy as np
 import os
 import warnings
+import keras.backend as K
 from PIL import Image
 from keras.preprocessing.image import Iterator, img_to_array
 from Augmentor import Pipeline
@@ -31,7 +32,7 @@ class ImageIterator(Iterator):
                  rescale=None,
                  pregen_augmented_images=False,
                  preprocessing_function=None,
-                 data_format='channels_last',
+                 data_format=None,
                  save_to_dir=None,
                  save_prefix='',
                  save_format='png',
@@ -61,7 +62,10 @@ class ImageIterator(Iterator):
             self.sample_weight = None
 
         self.augmentation_pipeline = augmentation_pipeline
-        self.data_format = data_format
+        if data_format is None:
+            self.data_format = K.image_data_format()
+        else:
+            self.data_format = data_format
         self.save_to_dir = save_to_dir
         if save_to_dir is not None and not os.path.exists(save_to_dir):
             os.makedirs(save_to_dir)
@@ -128,7 +132,7 @@ class ImageIterator(Iterator):
         """
 
         if self.preprocessing_function:
-            x = self.preprocessing_function(x)
+            x = self.preprocessing_function(x, data_format=self.data_format)
         if self.rescale:
             x *= self.rescale
 

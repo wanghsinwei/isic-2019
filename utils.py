@@ -64,6 +64,9 @@ def preprocess_input(x, data_format=None, **kwargs):
     mean = [0.6236, 0.5198, 0.5038]
     std = [0.2422, 0.2235, 0.2315]
 
+    if data_format is None:
+        data_format = K.image_data_format()
+
     # Zero-center by mean pixel
     if data_format == 'channels_first':
         if x.ndim == 3:

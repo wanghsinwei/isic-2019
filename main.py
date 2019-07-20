@@ -1,9 +1,9 @@
 import argparse
 import os
-# from keras.applications.densenet import DenseNet201, preprocess_input as preprocess_input_densenet
-from keras.applications.xception import Xception, preprocess_input as preprocess_input_xception
-from keras.applications.nasnet import NASNetLarge, preprocess_input as preprocess_input_nasnet
-from keras.applications.inception_resnet_v2 import InceptionResNetV2, preprocess_input as preprocess_input_resnet_v2
+# from keras.applications.densenet import preprocess_input as preprocess_input_densenet
+from keras.applications.xception import preprocess_input as preprocess_input_xception
+from keras.applications.nasnet import preprocess_input as preprocess_input_nasnet
+from keras.applications.inception_resnet_v2 import preprocess_input as preprocess_input_resnet_v2
 from utils import preprocess_input as preprocess_input_trainset
 from keras import backend as K
 from keras.utils import np_utils

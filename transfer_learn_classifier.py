@@ -1,6 +1,7 @@
 from importlib import import_module
 from lesion_classifier import LesionClassifier
 from base_model_param import BaseModelParam
+import keras.backend as K
 from keras.layers import Dense, Activation, Flatten, GlobalAveragePooling2D, Dropout
 from keras.models import Model
 from keras.optimizers import Adam
@@ -13,7 +14,7 @@ class TransferLearnClassifier(LesionClassifier):
         base_model_param: Instance of `BaseModelParam`.
     """
 
-    def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=40, image_data_format='channels_last', metrics=None,
+    def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=40, image_data_format=None, metrics=None,
         allow_multi_gpu=False, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         if num_classes is None:
@@ -22,10 +23,15 @@ class TransferLearnClassifier(LesionClassifier):
         # Dynamically create an instance of base model
         module = import_module(base_model_param.module_name)
         class_ = getattr(module, base_model_param.class_name)
-        if image_data_format == 'channels_last':
-            input_shape = (base_model_param.input_size[0], base_model_param.input_size[1], 3)
-        else:
+        
+        if image_data_format is None:
+            image_data_format = K.image_data_format()
+            
+        if image_data_format == 'channels_first':
             input_shape = (3, base_model_param.input_size[0], base_model_param.input_size[1])
+        else:
+            input_shape = (base_model_param.input_size[0], base_model_param.input_size[1], 3)
+            
         base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape)
 
         self._model_name = base_model_param.class_name
