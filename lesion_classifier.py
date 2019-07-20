@@ -15,7 +15,7 @@ class LesionClassifier():
         batch_size: Integer, size of a batch.
         image_data_format: String, either 'channels_first' or 'channels_last'.
     """
-    def __init__(self, input_size, image_data_format=None, batch_size=32, rescale=None, preprocessing_func=None,
+    def __init__(self, input_size, image_data_format=None, batch_size=40, max_queue_size=10, rescale=None, preprocessing_func=None,
         num_classes=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         self.input_size = input_size
@@ -24,6 +24,7 @@ class LesionClassifier():
         else:
             self.image_data_format = image_data_format
         self.batch_size = batch_size
+        self.max_queue_size = max_queue_size
         self.rescale = rescale
         self.preprocessing_func = preprocessing_func
         self.num_classes = num_classes
@@ -125,7 +126,7 @@ class LesionClassifier():
         self.model.fit_generator(
             self.generator_train,
             class_weight=class_weight,
-            max_queue_size=10,
+            max_queue_size=self.max_queue_size,
             workers=workers,
             use_multiprocessing=False,
             steps_per_epoch=len(self.image_paths_train)//self.batch_size,

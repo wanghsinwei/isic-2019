@@ -1,5 +1,6 @@
 import argparse
 import os
+import tensorflow as tf
 # from keras.applications.densenet import preprocess_input as preprocess_input_densenet
 from keras.applications.xception import preprocess_input as preprocess_input_xception
 from keras.applications.nasnet import preprocess_input as preprocess_input_nasnet
@@ -17,15 +18,24 @@ def main():
     parser = argparse.ArgumentParser(description='ISIC-2019 Skin Lesion Classifiers')
     parser.add_argument('data', metavar='DIR', help='path to data foler')
     parser.add_argument('--batchsize', type=int, help='Batch size (default: %(default)s)', default=40)
+    parser.add_argument('--maxqueuesize', type=int, help='Maximum size for the generator queue (default: %(default)s)', default=10)
     parser.add_argument('--epoch', type=int, help='Number of epochs', required=True)
     parser.add_argument('--vanilla', dest='vanilla', action='store_true', help='Vanilla CNN')
     parser.add_argument('--transfer', dest='transfer_models', nargs='*', help='Models for Transfer Learning')
     parser.add_argument('--finetune', dest='fine_tuning', action='store_true', help='Fine-Tuning Transfer Learning')
+    parser.add_argument('--gpus', type=int, help='Number of GPUs')
     args = parser.parse_args()
     print(args)
 
+    # Check if GPU available
+    gpus = args.gpus
+    if gpus is not None and not tf.test.is_gpu_available():
+        print('GPU is not available!')
+        gpus = None
+
     data_folder = args.data
     batch_size = args.batchsize
+    max_queue_size = args.maxqueuesize
     epoch_num = args.epoch
 
     derm_image_folder = os.path.join(data_folder, 'ISIC_2019_Training_Input')
@@ -36,13 +46,13 @@ def main():
 
     # Vanilla CNN
     if args.vanilla:
-        train_vanilla(df_train, df_val, len(category_names), class_weight_dict, batch_size, epoch_num)
+        train_vanilla(df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num)
     
     # Transfer Learning
     if args.transfer_models:
         model_param_map = get_transfer_model_param_map(args.fine_tuning)
         base_model_params = [model_param_map[x] for x in args.transfer_models]
-        train_transfer_learning(base_model_params, df_train, df_val, len(category_names), class_weight_dict, batch_size, epoch_num)
+        train_transfer_learning(base_model_params, df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num, gpus)
 
 
 def get_transfer_model_param_map(fine_tuning):
@@ -71,7 +81,7 @@ def get_transfer_model_param_map(fine_tuning):
     return base_model_params
 
 
-def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch_size, epoch_num):
+def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num):
     input_size = (224, 224)
     workers = os.cpu_count()
 
@@ -80,6 +90,7 @@ def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch
         image_data_format=K.image_data_format(),
         num_classes=known_category_num,
         batch_size=batch_size,
+        max_queue_size=max_queue_size,
         # rescale=1./255,
         preprocessing_func=preprocess_input_xception,
         metrics=[balanced_accuracy, 'accuracy'],
@@ -93,7 +104,7 @@ def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch
     classifier.train(epoch_num=epoch_num, class_weight=class_weight_dict, workers=workers)
 
 
-def train_transfer_learning(base_model_params, df_train, df_val, known_category_num, class_weight_dict, batch_size, epoch_num):
+def train_transfer_learning(base_model_params, df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num, gpus=None):
     workers = os.cpu_count()
 
     for model_param in base_model_params:
@@ -103,8 +114,10 @@ def train_transfer_learning(base_model_params, df_train, df_val, known_category_
             num_classes=known_category_num,
             dropout=None,
             batch_size=batch_size,
+            max_queue_size=max_queue_size,
             image_data_format=K.image_data_format(),
             metrics=[balanced_accuracy, 'accuracy'],
+            gpus=gpus,
             image_paths_train=df_train['path'].tolist(),
             categories_train=np_utils.to_categorical(
                 df_train['category'], num_classes=known_category_num),
