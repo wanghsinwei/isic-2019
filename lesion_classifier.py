@@ -148,10 +148,9 @@ class LesionClassifier():
             verbose=1,
             save_best_only=True)
         
-        checkpoint_balanced_acc_latest = MyModelCheckpoint(
+        checkpoint_latest = MyModelCheckpoint(
             model=self.model_for_checkpoint,
-            filepath="saved_models/{}_latest_balanced_acc.hdf5".format(model_name),
-            monitor='val_balanced_accuracy',
+            filepath="saved_models/{}_latest.hdf5".format(model_name),
             verbose=1,
             save_best_only=False)
 
@@ -171,7 +170,7 @@ class LesionClassifier():
         # Callback that streams epoch results to a csv file.
         csv_logger = CSVLogger(filename="logs/{}.training.csv".format(model_name), append=False)
         
-        return [checkpoint_balanced_acc, checkpoint_balanced_acc_latest, checkpoint_loss, reduce_lr, early_stop, csv_logger]
+        return [checkpoint_balanced_acc, checkpoint_latest, checkpoint_loss, reduce_lr, early_stop, csv_logger]
 
     @property
     def model(self):
