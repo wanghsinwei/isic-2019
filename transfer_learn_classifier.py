@@ -2,10 +2,12 @@ from importlib import import_module
 from lesion_classifier import LesionClassifier
 from base_model_param import BaseModelParam
 import tensorflow as tf
+import keras
 import keras.backend as K
-from keras.layers import Dense, Activation, Flatten, GlobalAveragePooling2D, Dropout
+from keras.layers import Dense, Activation, GlobalAveragePooling2D, Dropout
 from keras.models import Model
 from keras.optimizers import Adam
+from keras.callbacks import ReduceLROnPlateau, EarlyStopping
 from keras.utils import multi_gpu_model
 
 class TransferLearnClassifier(LesionClassifier):
@@ -15,18 +17,15 @@ class TransferLearnClassifier(LesionClassifier):
         base_model_param: Instance of `BaseModelParam`.
     """
 
-    def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=40, max_queue_size=10, image_data_format=None, metrics=None,
+    def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=64, max_queue_size=10, image_data_format=None, metrics=None,
         gpus=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         if num_classes is None:
             raise ValueError('num_classes cannot be None')
 
         self._model_name = base_model_param.class_name
+        self.metrics = metrics
 
-        # Dynamically create an instance of base model
-        module = import_module(base_model_param.module_name)
-        class_ = getattr(module, base_model_param.class_name)
-        
         if image_data_format is None:
             image_data_format = K.image_data_format()
             
@@ -34,6 +33,10 @@ class TransferLearnClassifier(LesionClassifier):
             input_shape = (3, base_model_param.input_size[0], base_model_param.input_size[1])
         else:
             input_shape = (base_model_param.input_size[0], base_model_param.input_size[1], 3)
+
+        # Dynamically get the class name of base model
+        module = import_module(base_model_param.module_name)
+        class_ = getattr(module, base_model_param.class_name)
         
         if gpus == 1:
             device_name = '/device:GPU:0'
@@ -43,22 +46,31 @@ class TransferLearnClassifier(LesionClassifier):
             device_name = '/cpu:0'
 
         with tf.device(device_name):
-            base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape)
-            # Whether to freeze all layers in the base model
-            for layer in base_model.layers:
-                layer.trainable = base_model_param.layers_trainable
+            # create an instance of base model which is pre-trained on the ImageNet dataset.
+            if base_model_param.class_name == 'ResNeXt50':
+                # A workaround to use ResNeXt in Keras 2.2.4.
+                # See http://donghao.org/2019/02/22/using-resnext-in-keras-2-2-4/
+                self.base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape,
+                                         backend=keras.backend, layers=keras.layers, models=keras.models, utils=keras.utils)
+            else:
+                self.base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape)
 
-            x = base_model.output
-            # x = Flatten()(x)
+            # Freeze all layers in the base model
+            for layer in self.base_model.layers:
+                layer.trainable = False
+
+            x = self.base_model.output
             x = GlobalAveragePooling2D()(x)
+            # Add fully connected layers
             for fc in fc_layers:
                 x = Dense(fc, activation='relu')(x)
                 if dropout is not None:
                     x = Dropout(rate=dropout)(x)
 
             # Final layer with softmax activation
-            predictions = Dense(num_classes, activation='softmax')(x) 
-            model = Model(inputs=base_model.input, outputs=predictions)
+            predictions = Dense(num_classes, activation='softmax')(x)
+            # Create the model
+            model = Model(inputs=self.base_model.input, outputs=predictions)
 
         self._model_for_checkpoint = model
 
@@ -76,7 +88,9 @@ class TransferLearnClassifier(LesionClassifier):
             self._model = model
             print("Training using CPUs.")
 
-        self._model.compile(optimizer=Adam(lr=1e-3), loss='categorical_crossentropy', metrics=metrics)
+        # Compile the model
+        self.start_lr = 1e-4
+        self._model.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
 
         super().__init__(
             input_size=base_model_param.input_size, preprocessing_func=base_model_param.preprocessing_func,
@@ -85,7 +99,54 @@ class TransferLearnClassifier(LesionClassifier):
             image_paths_val=image_paths_val, categories_val=categories_val)
 
     def train(self, epoch_num, class_weight=None, workers=1):
-        super()._train(epoch_num, self._model_name, class_weight, workers)
+        ### Callbacks
+        checkpoints = self._create_checkpoint_callbacks(self._model_name)
+
+        # Callback that streams epoch results to a csv file.
+        csv_logger = self._create_csvlogger_callback(self._model_name)
+
+        feature_extract_epochs = 10
+
+        ### Feature extraction
+        self.model.fit_generator(
+            self.generator_train,
+            class_weight=class_weight,
+            max_queue_size=self.max_queue_size,
+            workers=workers,
+            use_multiprocessing=False,
+            steps_per_epoch=len(self.image_paths_train)//self.batch_size,
+            epochs=feature_extract_epochs,
+            verbose=1,
+            callbacks=(checkpoints + [csv_logger]),
+            validation_data=self.generator_val,
+            validation_steps=len(self.image_paths_val)//self.batch_size)
+
+        ### Fine tuning. It should only be attempted after you have trained the top-level classifier with the pre-trained model set to non-trainable.
+        for layer in self.base_model.layers:
+            layer.trainable = True
+        
+        # Compile the model
+        self._model.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
+
+        # Reduce learning rate when the validation loss has stopped improving.
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, min_lr=1e-6, verbose=1)
+
+        # Stop training when the validation loss has stopped improving.
+        early_stop = EarlyStopping(monitor='val_loss', patience=25, verbose=1)
+
+        self.model.fit_generator(
+            self.generator_train,
+            class_weight=class_weight,
+            max_queue_size=self.max_queue_size,
+            workers=workers,
+            use_multiprocessing=False,
+            steps_per_epoch=len(self.image_paths_train)//self.batch_size,
+            epochs=epoch_num,
+            verbose=1,
+            callbacks=(checkpoints + [reduce_lr, early_stop, csv_logger]),
+            validation_data=self.generator_val,
+            validation_steps=len(self.image_paths_val)//self.batch_size,
+            initial_epoch=feature_extract_epochs)
 
     @property
     def model(self):

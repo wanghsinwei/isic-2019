@@ -57,6 +57,10 @@ def preprocess_input(x, data_format=None, **kwargs):
     if not issubclass(x.dtype.type, np.floating):
         x = x.astype(K.floatx(), copy=False)
 
+    # Below are Mean and STD for ImageNet
+    # mean = [0.485, 0.456, 0.406]
+    # std = [0.229, 0.224, 0.225]
+
     # Mean and STD was calculated over the Training Set
     # Mean:[0.6236094091893962, 0.5198354883713194, 0.5038435406338101]
     # STD:[0.2421814437693499, 0.22354427793687906, 0.2314805420919389]

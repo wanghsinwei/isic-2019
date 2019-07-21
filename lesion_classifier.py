@@ -4,7 +4,7 @@ from Augmentor import Pipeline
 from Augmentor.Operations import CropPercentageRange
 from image_iterator import ImageIterator
 from keras.optimizers import Adam
-from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, CSVLogger
+from keras.callbacks import ModelCheckpoint, CSVLogger
 import keras.backend as K
 import tensorflow as tf
 from callbacks import MyModelCheckpoint
@@ -15,9 +15,10 @@ class LesionClassifier():
         batch_size: Integer, size of a batch.
         image_data_format: String, either 'channels_first' or 'channels_last'.
     """
-    def __init__(self, input_size, image_data_format=None, batch_size=40, max_queue_size=10, rescale=None, preprocessing_func=None,
+    def __init__(self, input_size, image_data_format=None, batch_size=64, max_queue_size=10, rescale=None, preprocessing_func=None,
         num_classes=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
+        self.log_folder = 'logs'
         self.input_size = input_size
         if image_data_format is None:
             self.image_data_format = K.image_data_format()
@@ -46,6 +47,7 @@ class LesionClassifier():
     @staticmethod
     def create_aug_pipeline_train(input_size):
         """Image Augmentation Pipeline for Training Set."""
+        
         # p_train = Pipeline()
         # # Resize the image to 1.25 times of the desired input size of the model
         # resize_target_size = tuple(math.ceil(1.25*x) for x in input_size)
@@ -87,8 +89,8 @@ class LesionClassifier():
     def create_aug_pipeline_val(input_size):
         """Image Augmentation Pipeline for Validation Set."""
         p_val = Pipeline()
-        # Center Crop
-        p_val.crop_centre(probability=1, percentage_area=0.9)
+        # # Center Crop
+        # p_val.crop_centre(probability=1, percentage_area=0.9)
         # Resize the image to the desired input size of the model
         p_val.resize(probability=1, width=input_size[0], height=input_size[1])
         return p_val
@@ -122,28 +124,11 @@ class LesionClassifier():
 
         return generator_train, generator_val
 
-    def _train(self, epoch_num, model_name, class_weight=None, workers=1):
-        self.model.fit_generator(
-            self.generator_train,
-            class_weight=class_weight,
-            max_queue_size=self.max_queue_size,
-            workers=workers,
-            use_multiprocessing=False,
-            steps_per_epoch=len(self.image_paths_train)//self.batch_size,
-            epochs=epoch_num,
-            verbose=1,
-            callbacks=self._create_callbacks(model_name),
-            validation_data=self.generator_val,
-            validation_steps=len(self.image_paths_val)//self.batch_size)
-
-    def _create_callbacks(self, model_name):
+    def _create_checkpoint_callbacks(self, model_name):
         """Create the functions to be applied at given stages of the training procedure."""
 
         if not os.path.exists('saved_models'):
             os.makedirs('saved_models')
-            
-        if not os.path.exists('logs'):
-            os.makedirs('logs')
         
         checkpoint_balanced_acc = MyModelCheckpoint(
             model=self.model_for_checkpoint,
@@ -165,16 +150,13 @@ class LesionClassifier():
             verbose=1,
             save_best_only=True)
         
-        # Reduce learning rate when the validation loss has stopped improving.
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, min_lr=1e-5, verbose=1)
+        return [checkpoint_balanced_acc, checkpoint_latest, checkpoint_loss]
 
-        # Stop training when the validation loss has stopped improving.
-        early_stop = EarlyStopping(monitor='val_loss', patience=25, verbose=1)
+    def _create_csvlogger_callback(self, model_name):
+        if not os.path.exists(self.log_folder):
+            os.makedirs(self.log_folder)
 
-        # Callback that streams epoch results to a csv file.
-        csv_logger = CSVLogger(filename="logs/{}.training.csv".format(model_name), append=False)
-        
-        return [checkpoint_balanced_acc, checkpoint_latest, checkpoint_loss, reduce_lr, early_stop, csv_logger]
+        return CSVLogger(filename=os.path.join(self.log_folder, "{}.training.csv".format(model_name)), append=True)
 
     @property
     def model(self):
