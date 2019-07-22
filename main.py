@@ -116,7 +116,7 @@ def train_transfer_learning(base_model_params, df_train, df_val, known_category_
             base_model_param=model_param,
             fc_layers=[512],
             num_classes=known_category_num,
-            dropout=None,
+            dropout=0.3,
             batch_size=batch_size,
             max_queue_size=max_queue_size,
             image_data_format=K.image_data_format(),
