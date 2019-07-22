@@ -20,7 +20,7 @@ class VanillaClassifier(LesionClassifier):
         if num_classes is None:
             raise ValueError('num_classes cannot be None')
 
-        self._model_name = 'vanilla'
+        self._model_name = 'Vanilla'
 
         # Define vanilla CNN
         self._model = Sequential()
@@ -46,7 +46,7 @@ class VanillaClassifier(LesionClassifier):
         self._model.compile(optimizer=Adam(lr=1e-3), loss='categorical_crossentropy', metrics=metrics)
 
         super().__init__(
-            input_size=input_size, preprocessing_func=self.preprocess_input,
+            input_size=input_size, preprocessing_func=VanillaClassifier.preprocess_input,
             image_data_format=image_data_format, batch_size=batch_size, max_queue_size=max_queue_size,
             image_paths_train=image_paths_train, categories_train=categories_train,
             image_paths_val=image_paths_val, categories_val=categories_val)
@@ -89,7 +89,8 @@ class VanillaClassifier(LesionClassifier):
     def model_name(self):
         return self._model_name
 
-    def preprocess_input(self, x, **kwargs):
+    @staticmethod
+    def preprocess_input(x, **kwargs):
         """Preprocesses a numpy array encoding a batch of images.
         # Arguments
             x: a 4D numpy array consists of RGB values within [0, 255].

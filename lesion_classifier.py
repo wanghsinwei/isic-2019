@@ -1,10 +1,13 @@
 import math
 import os
+import pandas as pd
+import numpy as np
 from Augmentor import Pipeline
 from Augmentor.Operations import CropPercentageRange
 from image_iterator import ImageIterator
 from keras.optimizers import Adam
 from keras.callbacks import ModelCheckpoint, CSVLogger
+from keras.utils import np_utils
 import keras.backend as K
 import tensorflow as tf
 from callbacks import MyModelCheckpoint
@@ -19,6 +22,7 @@ class LesionClassifier():
         num_classes=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         self.log_folder = 'logs'
+        self.saved_model_folder = 'saved_models'
         self.input_size = input_size
         if image_data_format is None:
             self.image_data_format = K.image_data_format()
@@ -95,6 +99,34 @@ class LesionClassifier():
         p_val.resize(probability=1, width=input_size[0], height=input_size[1])
         return p_val
 
+    @staticmethod
+    def predict_dataframe(model, df, x_col='path', y_col='category', id_col='image', category_names=None,
+                          augmentation_pipeline=None, preprocessing_function=None,
+                          batch_size=64, workers=1, save_file_name=None):
+        generator = ImageIterator(
+            image_paths=df[x_col].tolist(),
+            labels=np_utils.to_categorical(df[y_col], num_classes=len(category_names)),
+            augmentation_pipeline=augmentation_pipeline,
+            batch_size=batch_size,
+            shuffle=False,  # shuffle must be False otherwise will get a wrong balanced accuracy
+            rescale=None,
+            preprocessing_function=preprocessing_function,
+            pregen_augmented_images=False,  # Only 1 epoch.
+            data_format=K.image_data_format()
+        )
+
+        # Predict
+        predicted_vector = model.predict_generator(generator, verbose=1, workers=workers)
+
+        # Save the predicted results as a csv file
+        df_pred = pd.DataFrame(predicted_vector, columns=category_names)
+        df_pred[y_col] = df[y_col].to_numpy()
+        df_pred['pred_'+y_col] = np.argmax(predicted_vector, axis=1)
+        df_pred.insert(0, id_col, df[id_col].to_numpy())
+        if save_file_name is not None:
+            df_pred.to_csv(path_or_buf=save_file_name, index=False)
+        return df_pred
+
     def _create_image_generator(self):
         ### Training Image Generator
         generator_train = ImageIterator(
@@ -127,25 +159,25 @@ class LesionClassifier():
     def _create_checkpoint_callbacks(self, model_name):
         """Create the functions to be applied at given stages of the training procedure."""
 
-        if not os.path.exists('saved_models'):
-            os.makedirs('saved_models')
+        if not os.path.exists(self.saved_model_folder):
+            os.makedirs(self.saved_model_folder)
         
         checkpoint_balanced_acc = MyModelCheckpoint(
             model=self.model_for_checkpoint,
-            filepath="saved_models/{}_best_balanced_acc.hdf5".format(model_name),
+            filepath=os.path.join(self.saved_model_folder, "{}_best_balanced_acc.hdf5".format(model_name)),
             monitor='val_balanced_accuracy',
             verbose=1,
             save_best_only=True)
         
         checkpoint_latest = MyModelCheckpoint(
             model=self.model_for_checkpoint,
-            filepath="saved_models/{}_latest.hdf5".format(model_name),
+            filepath=os.path.join(self.saved_model_folder, "{}_latest.hdf5".format(model_name)),
             verbose=1,
             save_best_only=False)
 
         checkpoint_loss = MyModelCheckpoint(
             model=self.model_for_checkpoint,
-            filepath="saved_models/{}_best_loss.hdf5".format(model_name),
+            filepath=os.path.join(self.saved_model_folder, "{}_best_loss.hdf5".format(model_name)),
             monitor='val_loss',
             verbose=1,
             save_best_only=True)

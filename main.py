@@ -6,6 +6,7 @@ from keras.applications.xception import preprocess_input as preprocess_input_xce
 from keras.applications.nasnet import preprocess_input as preprocess_input_nasnet
 from keras_applications.resnext import preprocess_input as preprocess_input_resnext
 from keras.applications.inception_resnet_v2 import preprocess_input as preprocess_input_inception_resnet_v2
+from keras.models import load_model
 from utils import preprocess_input as preprocess_input_trainset
 from keras import backend as K
 from keras.utils import np_utils
@@ -14,6 +15,7 @@ from vanilla_classifier import VanillaClassifier
 from transfer_learn_classifier import TransferLearnClassifier
 from metrics import balanced_accuracy
 from base_model_param import BaseModelParam
+from lesion_classifier import LesionClassifier
 
 def main():
     parser = argparse.ArgumentParser(description='ISIC-2019 Skin Lesion Classifiers')
@@ -35,6 +37,10 @@ def main():
         gpus = None
 
     data_folder = args.data
+    pred_result_folder = 'predict_results'
+    if not os.path.exists(pred_result_folder):
+        os.makedirs(pred_result_folder)
+    saved_model_folder = 'saved_models'
     batch_size = args.batchsize
     max_queue_size = args.maxqueuesize
     epoch_num = args.epoch
@@ -45,16 +51,40 @@ def main():
     df_train, df_val = train_validation_split(df_ground_truth)
     class_weight_dict = compute_class_weight_dict(df_train)
 
-    # Vanilla CNN
+    # Models used to predict validation set
+    models_to_predict_val = []
+
+    # Train Vanilla CNN
     if args.vanilla:
-        train_vanilla(df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num)
+        input_size_vanilla = (224, 224)
+        train_vanilla(df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num, input_size_vanilla)
+        models_to_predict_val.append({'model_name': 'Vanilla',
+                                      'input_size': input_size_vanilla,
+                                      'preprocessing_function': VanillaClassifier.preprocess_input})
     
-    # Transfer Learning
+    # Train models by Transfer Learning
     if args.transfer_models:
         model_param_map = get_transfer_model_param_map()
         base_model_params = [model_param_map[x] for x in args.transfer_models]
         train_transfer_learning(base_model_params, df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num, gpus)
+        for base_model_param in base_model_params:
+            models_to_predict_val.append({'model_name': base_model_param.class_name,
+                                        'input_size': base_model_param.input_size,
+                                        'preprocessing_function': base_model_param.preprocessing_func})
 
+    # Predict validation set
+    workers = os.cpu_count()
+    for x in models_to_predict_val:
+        print("Predict validation set using {} model".format(x['model_name']))
+        model = load_model(filepath=os.path.join(saved_model_folder, "{}_best_balanced_acc.hdf5".format(x['model_name'])),
+                           custom_objects={'balanced_accuracy': balanced_accuracy})
+        LesionClassifier.predict_dataframe(model=model, df=df_val,
+                                           category_names=category_names,
+                                           augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(x['input_size']),
+                                           preprocessing_function=x['preprocessing_function'],
+                                           workers=workers,
+                                           save_file_name=os.path.join(pred_result_folder, "{}_best_balanced_acc.csv").format(x['model_name']))
+    
     # Shutdown
     if args.autoshutdown:
         print('Shutdown in 5 minutes! It can be canceled by executing "shutdown -c"')
@@ -87,8 +117,7 @@ def get_transfer_model_param_map():
     return base_model_params
 
 
-def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num):
-    input_size = (224, 224)
+def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num, input_size):
     workers = os.cpu_count()
 
     classifier = VanillaClassifier(
@@ -132,6 +161,7 @@ def train_transfer_learning(base_model_params, df_train, df_val, known_category_
         print("Begin to train {}".format(model_param.class_name))
         classifier.train(epoch_num=epoch_num, class_weight=class_weight_dict, workers=workers)
         del classifier
+
 
 if __name__ == '__main__':
     main()

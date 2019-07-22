@@ -38,6 +38,9 @@ class TransferLearnClassifier(LesionClassifier):
         module = import_module(base_model_param.module_name)
         class_ = getattr(module, base_model_param.class_name)
         
+        self.gpus = gpus
+        self.start_lr = 1e-4
+
         if gpus == 1:
             device_name = '/device:GPU:0'
         else:
@@ -71,12 +74,16 @@ class TransferLearnClassifier(LesionClassifier):
             predictions = Dense(num_classes, activation='softmax')(x)
             # Create the model
             model = Model(inputs=self.base_model.input, outputs=predictions)
+            # Compile the model
+            model.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
 
         self._model_for_checkpoint = model
 
         if gpus is not None and gpus >= 2:
             try:
                 self._model = multi_gpu_model(model, gpus=gpus)
+                # Compile the model
+                self._model.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
                 print("Training using multiple GPUs.")
             except ValueError:
                 self._model = model
@@ -88,10 +95,6 @@ class TransferLearnClassifier(LesionClassifier):
             self._model = model
             print("Training using CPUs.")
 
-        # Compile the model
-        self.start_lr = 1e-4
-        self._model.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
-
         super().__init__(
             input_size=base_model_param.input_size, preprocessing_func=base_model_param.preprocessing_func,
             image_data_format=image_data_format, batch_size=batch_size, max_queue_size=max_queue_size,
@@ -100,7 +103,7 @@ class TransferLearnClassifier(LesionClassifier):
 
     def train(self, epoch_num, class_weight=None, workers=1):
         
-        feature_extract_epochs = 10
+        feature_extract_epochs = 5
 
         # Checkpoint Callbacks
         checkpoints = self._create_checkpoint_callbacks(self._model_name)
@@ -130,6 +133,8 @@ class TransferLearnClassifier(LesionClassifier):
             layer.trainable = True
         
         # Compile the model
+        if self.gpus is not None and self.gpus >= 2:
+            self._model_for_checkpoint.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
         self._model.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
 
         # Reduce learning rate when the validation loss has stopped improving.
