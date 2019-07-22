@@ -106,6 +106,7 @@ def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch
     classifier.model.summary()
     print('Begin to train Vanilla CNN')
     classifier.train(epoch_num=epoch_num, class_weight=class_weight_dict, workers=workers)
+    del classifier
 
 
 def train_transfer_learning(base_model_params, df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num, gpus=None):
@@ -130,6 +131,7 @@ def train_transfer_learning(base_model_params, df_train, df_val, known_category_
         # classifier.model.summary()
         print("Begin to train {}".format(model_param.class_name))
         classifier.train(epoch_num=epoch_num, class_weight=class_weight_dict, workers=workers)
+        del classifier
 
 if __name__ == '__main__':
     main()
