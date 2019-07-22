@@ -99,13 +99,17 @@ class TransferLearnClassifier(LesionClassifier):
             image_paths_val=image_paths_val, categories_val=categories_val)
 
     def train(self, epoch_num, class_weight=None, workers=1):
-        ### Callbacks
+        
+        feature_extract_epochs = 10
+
+        # Checkpoint Callbacks
         checkpoints = self._create_checkpoint_callbacks(self._model_name)
+
+        # This ReduceLROnPlateau is just a workaround to make csv_logger record learning rate, and won't affect learning rate during feature extraction epochs.
+        reduce_lr = ReduceLROnPlateau(patience=feature_extract_epochs+10, verbose=1)
 
         # Callback that streams epoch results to a csv file.
         csv_logger = self._create_csvlogger_callback(self._model_name)
-
-        feature_extract_epochs = 10
 
         ### Feature extraction
         self.model.fit_generator(
@@ -117,7 +121,7 @@ class TransferLearnClassifier(LesionClassifier):
             steps_per_epoch=len(self.image_paths_train)//self.batch_size,
             epochs=feature_extract_epochs,
             verbose=1,
-            callbacks=(checkpoints + [csv_logger]),
+            callbacks=(checkpoints + [reduce_lr, csv_logger]),
             validation_data=self.generator_val,
             validation_steps=len(self.image_paths_val)//self.batch_size)
 
