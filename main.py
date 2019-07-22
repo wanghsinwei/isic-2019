@@ -21,9 +21,10 @@ def main():
     parser.add_argument('--batchsize', type=int, help='Batch size (default: %(default)s)', default=64)
     parser.add_argument('--maxqueuesize', type=int, help='Maximum size for the generator queue (default: %(default)s)', default=10)
     parser.add_argument('--epoch', type=int, help='Number of epochs', required=True)
-    parser.add_argument('--vanilla', dest='vanilla', action='store_true', help='Vanilla CNN')
+    parser.add_argument('--vanilla', dest='vanilla', action='store_true', help='Train Vanilla CNN')
     parser.add_argument('--transfer', dest='transfer_models', nargs='*', help='Models for Transfer Learning')
     parser.add_argument('--gpus', type=int, help='Number of GPUs')
+    parser.add_argument('--autoshutdown', dest='autoshutdown', action='store_true', help='Automatically shutdown the computer after training is done')
     args = parser.parse_args()
     print(args)
 
@@ -53,6 +54,11 @@ def main():
         model_param_map = get_transfer_model_param_map()
         base_model_params = [model_param_map[x] for x in args.transfer_models]
         train_transfer_learning(base_model_params, df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num, gpus)
+
+    # Shutdown
+    if args.autoshutdown:
+        print('Shutdown in 5 minutes! It can be canceled by executing "shutdown -c"')
+        os.system("sudo shutdown -h +5")
 
 
 def get_transfer_model_param_map():
