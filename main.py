@@ -74,16 +74,18 @@ def main():
 
     # Predict validation set
     workers = os.cpu_count()
-    for x in models_to_predict_val:
-        print("Predict validation set using {} model".format(x['model_name']))
-        model = load_model(filepath=os.path.join(saved_model_folder, "{}_best_balanced_acc.hdf5".format(x['model_name'])),
-                           custom_objects={'balanced_accuracy': balanced_accuracy})
-        LesionClassifier.predict_dataframe(model=model, df=df_val,
-                                           category_names=category_names,
-                                           augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(x['input_size']),
-                                           preprocessing_function=x['preprocessing_function'],
-                                           workers=workers,
-                                           save_file_name=os.path.join(pred_result_folder, "{}_best_balanced_acc.csv").format(x['model_name']))
+    best_metrics = ['best_balanced_acc', 'best_loss']
+    for best_metric in best_metrics:
+        for m in models_to_predict_val:
+            print("Predict validation set using {} model".format(m['model_name']))
+            model = load_model(filepath=os.path.join(saved_model_folder, "{}_{}.hdf5".format(m['model_name'], best_metric)),
+                            custom_objects={'balanced_accuracy': balanced_accuracy})
+            LesionClassifier.predict_dataframe(model=model, df=df_val,
+                                            category_names=category_names,
+                                            augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(m['input_size']),
+                                            preprocessing_function=m['preprocessing_function'],
+                                            workers=workers,
+                                            save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], best_metric))
     
     # Shutdown
     if args.autoshutdown:
@@ -157,7 +159,7 @@ def train_transfer_learning(base_model_params, df_train, df_val, known_category_
             image_paths_val=df_val['path'].tolist(),
             categories_val=np_utils.to_categorical(df_val['category'], num_classes=known_category_num)
         )
-        # classifier.model.summary()
+        classifier.model.summary()
         print("Begin to train {}".format(model_param.class_name))
         classifier.train(epoch_num=epoch_num, class_weight=class_weight_dict, workers=workers)
         del classifier

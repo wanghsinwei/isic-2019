@@ -53,16 +53,16 @@ class TransferLearnClassifier(LesionClassifier):
             if base_model_param.class_name == 'ResNeXt50':
                 # A workaround to use ResNeXt in Keras 2.2.4.
                 # See http://donghao.org/2019/02/22/using-resnext-in-keras-2-2-4/
-                self.base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape,
+                self._base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape,
                                          backend=keras.backend, layers=keras.layers, models=keras.models, utils=keras.utils)
             else:
-                self.base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape)
+                self._base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape)
 
             # Freeze all layers in the base model
-            for layer in self.base_model.layers:
+            for layer in self._base_model.layers:
                 layer.trainable = False
 
-            x = self.base_model.output
+            x = self._base_model.output
             x = GlobalAveragePooling2D()(x)
             # Add fully connected layers
             for fc in fc_layers:
@@ -73,7 +73,7 @@ class TransferLearnClassifier(LesionClassifier):
             # Final layer with softmax activation
             predictions = Dense(num_classes, activation='softmax')(x)
             # Create the model
-            model = Model(inputs=self.base_model.input, outputs=predictions)
+            model = Model(inputs=self._base_model.input, outputs=predictions)
             # Compile the model
             model.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
 
@@ -84,16 +84,16 @@ class TransferLearnClassifier(LesionClassifier):
                 self._model = multi_gpu_model(model, gpus=gpus)
                 # Compile the model
                 self._model.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
-                print("Training using multiple GPUs.")
+                print('===== Training using multiple GPUs =====')
             except ValueError:
                 self._model = model
-                print("Training using CPUs.")
+                print('===== Training using CPU(s) =====')
         elif gpus == 1:
             self._model = model
-            print("Training using single GPU.")
+            print('===== Training using single GPU =====')
         else:
             self._model = model
-            print("Training using CPUs.")
+            print('===== Training using CPU(s) =====')
 
         super().__init__(
             input_size=base_model_param.input_size, preprocessing_func=base_model_param.preprocessing_func,
@@ -115,7 +115,7 @@ class TransferLearnClassifier(LesionClassifier):
         csv_logger = self._create_csvlogger_callback(self._model_name)
 
         ### Feature extraction
-        self.model.fit_generator(
+        self._model.fit_generator(
             self.generator_train,
             class_weight=class_weight,
             max_queue_size=self.max_queue_size,
@@ -129,13 +129,15 @@ class TransferLearnClassifier(LesionClassifier):
             validation_steps=len(self.image_paths_val)//self.batch_size)
 
         ### Fine tuning. It should only be attempted after you have trained the top-level classifier with the pre-trained model set to non-trainable.
-        for layer in self.base_model.layers:
+        print('===== Unfreeze the base model =====')
+        for layer in self._base_model.layers:
             layer.trainable = True
         
         # Compile the model
         if self.gpus is not None and self.gpus >= 2:
             self._model_for_checkpoint.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
         self._model.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
+        self._model.summary()
 
         # Reduce learning rate when the validation loss has stopped improving.
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, min_lr=1e-6, verbose=1)
@@ -143,7 +145,8 @@ class TransferLearnClassifier(LesionClassifier):
         # Stop training when the validation loss has stopped improving.
         early_stop = EarlyStopping(monitor='val_loss', patience=25, verbose=1)
 
-        self.model.fit_generator(
+        self.generator_train.reset()
+        self._model.fit_generator(
             self.generator_train,
             class_weight=class_weight,
             max_queue_size=self.max_queue_size,
