@@ -74,18 +74,18 @@ def main():
 
     # Predict validation set
     workers = os.cpu_count()
-    best_metrics = ['best_balanced_acc', 'best_loss']
-    for best_metric in best_metrics:
+    postfixes = ['best_balanced_acc', 'best_loss', 'latest']
+    for postfix in postfixes:
         for m in models_to_predict_val:
             print("Predict validation set using {} model".format(m['model_name']))
-            model = load_model(filepath=os.path.join(saved_model_folder, "{}_{}.hdf5".format(m['model_name'], best_metric)),
+            model = load_model(filepath=os.path.join(saved_model_folder, "{}_{}.hdf5".format(m['model_name'], postfix)),
                             custom_objects={'balanced_accuracy': balanced_accuracy})
             LesionClassifier.predict_dataframe(model=model, df=df_val,
                                             category_names=category_names,
                                             augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(m['input_size']),
                                             preprocessing_function=m['preprocessing_function'],
                                             workers=workers,
-                                            save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], best_metric))
+                                            save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], postfix))
     
     # Shutdown
     if args.autoshutdown:
