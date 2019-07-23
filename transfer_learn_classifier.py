@@ -146,6 +146,8 @@ class TransferLearnClassifier(LesionClassifier):
         early_stop = EarlyStopping(monitor='val_loss', patience=25, verbose=1)
 
         self.generator_train.reset()
+        self.generator_val.reset()
+        
         self._model.fit_generator(
             self.generator_train,
             class_weight=class_weight,
