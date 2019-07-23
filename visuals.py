@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix
 
-def plot_complexity_graph(csv_file, title=None, figsize=(20, 5)):
+def plot_complexity_graph(csv_file, title=None, figsize=(20, 5), feature_extract_epochs=None):
     df = pd.read_csv(csv_file)
 
     fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=figsize)
@@ -20,6 +20,12 @@ def plot_complexity_graph(csv_file, title=None, figsize=(20, 5)):
     ax2.plot(df['val_balanced_accuracy'], label='Validation Accuracy')
     ax2.set(xlabel='epoch', ylabel='Balanced Accuracy')
     ax2.legend()
+
+    if feature_extract_epochs is not None:
+        ax1.axvline(feature_extract_epochs-1, color='green', label='Start Fine Tuning')
+        ax2.axvline(feature_extract_epochs-1, color='green', label='Start Fine Tuning')
+        ax1.legend()
+        ax2.legend()
 
 def plot_grouped_2bars(scalars, scalarlabels, xticklabels, title=None):
     x = np.arange(len(xticklabels))  # the label locations
