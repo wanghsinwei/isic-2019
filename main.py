@@ -90,8 +90,8 @@ def main():
     
     # Shutdown
     if args.autoshutdown:
-        print("Shutdown at {}! It can be canceled by executing \"sudo shutdown -c\"".format(time.ctime(time.time() + 5*60)))
-        os.system("sudo shutdown -h +5")
+        print("Shutdown at {}! It can be canceled by executing \"sudo shutdown -c\"".format(time.ctime(time.time() + 2*60)))
+        os.system("sudo shutdown -h +2")
 
 
 def get_transfer_model_param_map():
