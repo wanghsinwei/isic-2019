@@ -1,5 +1,6 @@
 import argparse
 import os
+import time
 import tensorflow as tf
 # from keras.applications.densenet import preprocess_input as preprocess_input_densenet
 from keras.applications.xception import preprocess_input as preprocess_input_xception
@@ -89,7 +90,7 @@ def main():
     
     # Shutdown
     if args.autoshutdown:
-        print('Shutdown in 5 minutes! It can be canceled by executing "shutdown -c"')
+        print("Shutdown at {}! It can be canceled by executing \"sudo shutdown -c\"".format(time.ctime(time.time() + 5*60)))
         os.system("sudo shutdown -h +5")
 
 
