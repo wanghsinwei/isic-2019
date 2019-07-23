@@ -39,7 +39,7 @@ class TransferLearnClassifier(LesionClassifier):
         class_ = getattr(module, base_model_param.class_name)
         
         self.gpus = gpus
-        self.start_lr = 1e-4
+        start_lr = 1e-4
 
         if gpus == 1:
             device_name = '/device:GPU:0'
@@ -75,7 +75,7 @@ class TransferLearnClassifier(LesionClassifier):
             # Create the model
             model = Model(inputs=self._base_model.input, outputs=predictions)
             # Compile the model
-            model.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
+            model.compile(optimizer=Adam(lr=start_lr), loss='categorical_crossentropy', metrics=self.metrics)
 
         self._model_for_checkpoint = model
 
@@ -83,7 +83,7 @@ class TransferLearnClassifier(LesionClassifier):
             try:
                 self._model = multi_gpu_model(model, gpus=gpus)
                 # Compile the model
-                self._model.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
+                self._model.compile(optimizer=Adam(lr=start_lr), loss='categorical_crossentropy', metrics=self.metrics)
                 print('===== Training using multiple GPUs =====')
             except ValueError:
                 self._model = model
@@ -103,7 +103,7 @@ class TransferLearnClassifier(LesionClassifier):
 
     def train(self, epoch_num, class_weight=None, workers=1):
         
-        feature_extract_epochs = 5
+        feature_extract_epochs = 10
 
         # Checkpoint Callbacks
         checkpoints = self._create_checkpoint_callbacks(self._model_name)
@@ -133,17 +133,20 @@ class TransferLearnClassifier(LesionClassifier):
         for layer in self._base_model.layers:
             layer.trainable = True
         
+        # Use a much lower learning rate in the fine tuning step
+        fine_tuning_start_lr = 1e-5
+
         # Compile the model
         if self.gpus is not None and self.gpus >= 2:
-            self._model_for_checkpoint.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
-        self._model.compile(optimizer=Adam(lr=self.start_lr), loss='categorical_crossentropy', metrics=self.metrics)
+            self._model_for_checkpoint.compile(optimizer=Adam(lr=fine_tuning_start_lr), loss='categorical_crossentropy', metrics=self.metrics)
+        self._model.compile(optimizer=Adam(lr=fine_tuning_start_lr), loss='categorical_crossentropy', metrics=self.metrics)
         self._model.summary()
 
         # Reduce learning rate when the validation loss has stopped improving.
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, min_lr=1e-6, verbose=1)
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8, min_lr=1e-7, verbose=1)
 
         # Stop training when the validation loss has stopped improving.
-        early_stop = EarlyStopping(monitor='val_loss', patience=25, verbose=1)
+        early_stop = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
 
         self.generator_train.reset()
         self.generator_val.reset()
