@@ -17,7 +17,7 @@ class TransferLearnClassifier(LesionClassifier):
         base_model_param: Instance of `BaseModelParam`.
     """
 
-    def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=64, max_queue_size=10, image_data_format=None, metrics=None,
+    def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=32, max_queue_size=10, image_data_format=None, metrics=None,
         gpus=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         if num_classes is None:
