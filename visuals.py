@@ -4,21 +4,21 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix
 
-def plot_complexity_graph(csv_file, title=None, figsize=(20, 5), feature_extract_epochs=None):
+def plot_complexity_graph(csv_file, title=None, figsize=(14, 10), feature_extract_epochs=None):
     df = pd.read_csv(csv_file)
 
-    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=figsize)
+    fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=figsize)
     fig.patch.set_facecolor('white')
-    fig.suptitle(title)
+    fig.suptitle(title, fontsize=14)
 
-    ax1.plot(df['loss'], label='Training loss')
-    ax1.plot(df['val_loss'], label='Validation loss')
-    ax1.set(xlabel='epoch', ylabel='Loss')
+    ax1.plot(df['loss'], label='Training Loss')
+    ax1.plot(df['val_loss'], label='Validation Loss')
+    ax1.set(title='Training and Validation Loss', xlabel='', ylabel='Loss')
     ax1.legend()
 
     ax2.plot(df['balanced_accuracy'], label='Training Accuracy')
     ax2.plot(df['val_balanced_accuracy'], label='Validation Accuracy')
-    ax2.set(xlabel='epoch', ylabel='Balanced Accuracy')
+    ax2.set(title='Training and Validation Accuracy', xlabel='epoch', ylabel='Balanced Accuracy')
     ax2.legend()
 
     if feature_extract_epochs is not None:
@@ -27,6 +27,9 @@ def plot_complexity_graph(csv_file, title=None, figsize=(20, 5), feature_extract
         ax1.legend()
         ax2.legend()
     
+    # tight_layout() only considers ticklabels, axis labels, and titles. Thus, other artists may be clipped and also may overlap.
+    # [left, bottom, right, top]
+    fig.tight_layout(rect=[0, 0.02, 1, 0.96])
     return fig
 
 def plot_grouped_2bars(scalars, scalarlabels, xticklabels, title=None):
