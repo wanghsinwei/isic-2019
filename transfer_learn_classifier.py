@@ -103,7 +103,7 @@ class TransferLearnClassifier(LesionClassifier):
 
     def train(self, epoch_num, class_weight=None, workers=1):
         
-        feature_extract_epochs = 3
+        feature_extract_epochs = 5
 
         # Checkpoint Callbacks
         checkpoints = self._create_checkpoint_callbacks(self._model_name)
@@ -144,10 +144,10 @@ class TransferLearnClassifier(LesionClassifier):
         self._model.summary()
 
         # Reduce learning rate when the validation loss has stopped improving.
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=1e-7, verbose=1)
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8, min_lr=1e-7, verbose=1)
 
         # Stop training when the validation loss has stopped improving.
-        early_stop = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
+        early_stop = EarlyStopping(monitor='val_loss', patience=16, verbose=1)
 
         self.generator_train.reset()
         self.generator_val.reset()
