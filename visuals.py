@@ -26,6 +26,8 @@ def plot_complexity_graph(csv_file, title=None, figsize=(20, 5), feature_extract
         ax2.axvline(feature_extract_epochs-1, color='green', label='Start Fine Tuning')
         ax1.legend()
         ax2.legend()
+    
+    return fig
 
 def plot_grouped_2bars(scalars, scalarlabels, xticklabels, title=None):
     x = np.arange(len(xticklabels))  # the label locations
@@ -77,11 +79,14 @@ def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title=None, 
 
     fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor('white')
-    ax.set_title(title)
+    ax.set(title=title,
+           ylabel='True Label',
+           xlabel='Predicted Label')
     im, cbar = heatmap(cm, classes, classes, ax=ax, cmap=plt.cm.Blues, cbarlabel='', grid=False)
     texts = annotate_heatmap(im, valfmt="{x:.2f}")
 
     fig.tight_layout()
+    return fig
 
 
 def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", grid=True, **kwargs):
