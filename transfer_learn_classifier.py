@@ -115,6 +115,7 @@ class TransferLearnClassifier(LesionClassifier):
         csv_logger = self._create_csvlogger_callback(self._model_name)
 
         ### Feature extraction
+        K.get_session().run(tf.local_variables_initializer())
         self._model.fit_generator(
             self.generator_train,
             class_weight=class_weight,
@@ -151,6 +152,7 @@ class TransferLearnClassifier(LesionClassifier):
         self.generator_train.reset()
         self.generator_val.reset()
         
+        K.get_session().run(tf.local_variables_initializer())
         self._model.fit_generator(
             self.generator_train,
             class_weight=class_weight,

@@ -83,7 +83,7 @@ def main():
         for m in models_to_predict_val:
             model_filepath = os.path.join(saved_model_folder, "{}_{}.hdf5".format(m['model_name'], postfix))
             if os.path.exists(model_filepath):
-                print("===== Predict validation set using \"{}\" model =====".format(m['model_name']))
+                print("===== Predict validation set using \"{}_{}\" model =====".format(m['model_name'], postfix))
                 model = load_model(filepath=model_filepath,
                                    custom_objects={'balanced_accuracy': balanced_accuracy})
                 LesionClassifier.predict_dataframe(model=model, df=df_val,

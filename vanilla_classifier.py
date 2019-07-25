@@ -1,4 +1,6 @@
 import os
+import tensorflow as tf
+from keras import backend as K
 from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D, Dropout, Dense
 from keras.models import Sequential
 from keras.optimizers import Adam
@@ -64,6 +66,7 @@ class VanillaClassifier(LesionClassifier):
         # Callback that streams epoch results to a csv file.
         csv_logger = self._create_csvlogger_callback(self._model_name)
 
+        K.get_session().run(tf.local_variables_initializer())
         return self.model.fit_generator(
             self.generator_train,
             class_weight=class_weight,
