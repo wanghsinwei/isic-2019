@@ -56,10 +56,10 @@ class VanillaClassifier(LesionClassifier):
         checkpoints = self._create_checkpoint_callbacks(self._model_name)
         
         # Reduce learning rate when the validation loss has stopped improving.
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8, min_lr=1e-5, verbose=1)
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=1e-6, verbose=1)
 
         # Stop training when the validation loss has stopped improving.
-        early_stop = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
+        early_stop = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 
         # Callback that streams epoch results to a csv file.
         csv_logger = self._create_csvlogger_callback(self._model_name)

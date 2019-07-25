@@ -143,10 +143,10 @@ class TransferLearnClassifier(LesionClassifier):
         self._model.summary()
 
         # Reduce learning rate when the validation loss has stopped improving.
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8, min_lr=1e-7, verbose=1)
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=1e-7, verbose=1)
 
         # Stop training when the validation loss has stopped improving.
-        early_stop = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
+        early_stop = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
 
         self.generator_train.reset()
         self.generator_val.reset()

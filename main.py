@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--transfer', dest='transfer_models', nargs='*', help='Models for Transfer Learning')
     parser.add_argument('--gpus', type=int, help='Number of GPUs')
     parser.add_argument('--autoshutdown', dest='autoshutdown', action='store_true', help='Automatically shutdown the computer after training is done')
+    parser.add_argument('--skiptraining', dest='skiptraining', action='store_true', help='Skip training processes')
     args = parser.parse_args()
     print(args)
 
@@ -58,7 +59,8 @@ def main():
     # Train Vanilla CNN
     if args.vanilla:
         input_size_vanilla = (224, 224)
-        train_vanilla(df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num, input_size_vanilla)
+        if not args.skiptraining:
+            train_vanilla(df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num, input_size_vanilla)
         models_to_predict_val.append({'model_name': 'Vanilla',
                                       'input_size': input_size_vanilla,
                                       'preprocessing_function': VanillaClassifier.preprocess_input})
@@ -67,7 +69,8 @@ def main():
     if args.transfer_models:
         model_param_map = get_transfer_model_param_map()
         base_model_params = [model_param_map[x] for x in args.transfer_models]
-        train_transfer_learning(base_model_params, df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num, gpus)
+        if not args.skiptraining:
+            train_transfer_learning(base_model_params, df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num, gpus)
         for base_model_param in base_model_params:
             models_to_predict_val.append({'model_name': base_model_param.class_name,
                                         'input_size': base_model_param.input_size,
@@ -78,15 +81,19 @@ def main():
     postfixes = ['best_balanced_acc', 'best_loss', 'latest']
     for postfix in postfixes:
         for m in models_to_predict_val:
-            print("Predict validation set using {} model".format(m['model_name']))
-            model = load_model(filepath=os.path.join(saved_model_folder, "{}_{}.hdf5".format(m['model_name'], postfix)),
-                            custom_objects={'balanced_accuracy': balanced_accuracy})
-            LesionClassifier.predict_dataframe(model=model, df=df_val,
-                                            category_names=category_names,
-                                            augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(m['input_size']),
-                                            preprocessing_function=m['preprocessing_function'],
-                                            workers=workers,
-                                            save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], postfix))
+            model_filepath = os.path.join(saved_model_folder, "{}_{}.hdf5".format(m['model_name'], postfix))
+            if os.path.exists(model_filepath):
+                print("===== Predict validation set using \"{}\" model =====".format(m['model_name']))
+                model = load_model(filepath=model_filepath,
+                                   custom_objects={'balanced_accuracy': balanced_accuracy})
+                LesionClassifier.predict_dataframe(model=model, df=df_val,
+                                                   category_names=category_names,
+                                                   augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(m['input_size']),
+                                                   preprocessing_function=m['preprocessing_function'],
+                                                   workers=workers,
+                                                   save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], postfix))
+            else:
+                print("\"{}\" doesn't exist".format(model_filepath))
     
     # Shutdown
     if args.autoshutdown:
