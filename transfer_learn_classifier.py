@@ -75,7 +75,7 @@ class TransferLearnClassifier(LesionClassifier):
             # Create the model
             model = Model(inputs=self._base_model.input, outputs=predictions)
             # Compile the model
-            model.compile(optimizer=Adam(lr=start_lr), loss='categorical_crossentropy', metrics=self.metrics)
+            # model.compile(optimizer=Adam(lr=start_lr), loss='categorical_crossentropy', metrics=self.metrics)
 
         self._model_for_checkpoint = model
 
@@ -83,7 +83,7 @@ class TransferLearnClassifier(LesionClassifier):
             try:
                 self._model = multi_gpu_model(model, gpus=gpus)
                 # Compile the model
-                self._model.compile(optimizer=Adam(lr=start_lr), loss='categorical_crossentropy', metrics=self.metrics)
+                # self._model.compile(optimizer=Adam(lr=start_lr), loss='categorical_crossentropy', metrics=self.metrics)
                 print('===== Training using multiple GPUs =====')
             except ValueError:
                 self._model = model
@@ -94,6 +94,9 @@ class TransferLearnClassifier(LesionClassifier):
         else:
             self._model = model
             print('===== Training using CPU(s) =====')
+
+        # Compile the model
+        self._model.compile(optimizer=Adam(lr=start_lr), loss='categorical_crossentropy', metrics=self.metrics)
 
         super().__init__(
             input_size=base_model_param.input_size, preprocessing_func=base_model_param.preprocessing_func, class_weight=class_weight,
@@ -137,8 +140,8 @@ class TransferLearnClassifier(LesionClassifier):
         fine_tuning_start_lr = 1e-5
 
         # Compile the model
-        if self.gpus is not None and self.gpus >= 2:
-            self._model_for_checkpoint.compile(optimizer=Adam(lr=fine_tuning_start_lr), loss='categorical_crossentropy', metrics=self.metrics)
+        # if self.gpus is not None and self.gpus >= 2:
+        #     self._model_for_checkpoint.compile(optimizer=Adam(lr=fine_tuning_start_lr), loss='categorical_crossentropy', metrics=self.metrics)
         self._model.compile(optimizer=Adam(lr=fine_tuning_start_lr), loss='categorical_crossentropy', metrics=self.metrics)
         self._model.summary()
 
