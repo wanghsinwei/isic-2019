@@ -16,6 +16,7 @@ import keras.backend as K
 from PIL import Image
 from keras.preprocessing.image import Iterator, img_to_array
 from Augmentor import Pipeline
+from tqdm import trange
 
 class ImageIterator(Iterator):
     """Iterator yielding data from image file paths.
@@ -147,7 +148,7 @@ class ImageIterator(Iterator):
     def _generate_augmented_images(self):
         augmented_images = []
 
-        for i in range(len(self.image_paths)):
+        for i in trange(len(self.image_paths), desc='Pre-generate augmented images'):
             img = Image.open(self.image_paths[i])
             if self.augmentation_pipeline:
                 img = self.augmentation_pipeline.perform_operations(img)
