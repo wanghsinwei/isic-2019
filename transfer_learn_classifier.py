@@ -17,7 +17,7 @@ class TransferLearnClassifier(LesionClassifier):
         base_model_param: Instance of `BaseModelParam`.
     """
 
-    def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=32, max_queue_size=10, image_data_format=None, metrics=None,
+    def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=64, max_queue_size=10, image_data_format=None, metrics=None,
         gpus=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         if num_classes is None:
@@ -54,7 +54,7 @@ class TransferLearnClassifier(LesionClassifier):
                 # A workaround to use ResNeXt in Keras 2.2.4.
                 # See http://donghao.org/2019/02/22/using-resnext-in-keras-2-2-4/
                 self._base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape,
-                                         backend=keras.backend, layers=keras.layers, models=keras.models, utils=keras.utils)
+                                          backend=keras.backend, layers=keras.layers, models=keras.models, utils=keras.utils)
             else:
                 self._base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape)
 
@@ -106,16 +106,15 @@ class TransferLearnClassifier(LesionClassifier):
         feature_extract_epochs = 5
 
         # Checkpoint Callbacks
-        checkpoints = self._create_checkpoint_callbacks(self._model_name)
+        checkpoints = super()._create_checkpoint_callbacks(self._model_for_checkpoint, self._model_name)
 
         # This ReduceLROnPlateau is just a workaround to make csv_logger record learning rate, and won't affect learning rate during feature extraction epochs.
         reduce_lr = ReduceLROnPlateau(patience=feature_extract_epochs+10, verbose=1)
 
         # Callback that streams epoch results to a csv file.
-        csv_logger = self._create_csvlogger_callback(self._model_name)
+        csv_logger = super()._create_csvlogger_callback(self._model_name)
 
         ### Feature extraction
-        K.get_session().run(tf.local_variables_initializer())
         self._model.fit_generator(
             self.generator_train,
             class_weight=class_weight,
@@ -143,6 +142,9 @@ class TransferLearnClassifier(LesionClassifier):
         self._model.compile(optimizer=Adam(lr=fine_tuning_start_lr), loss='categorical_crossentropy', metrics=self.metrics)
         self._model.summary()
 
+        # Re-create Checkpoint Callbacks
+        checkpoints = super()._create_checkpoint_callbacks(self._model_for_checkpoint, self._model_name)
+
         # Reduce learning rate when the validation loss has stopped improving.
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8, min_lr=1e-7, verbose=1)
 
@@ -152,7 +154,6 @@ class TransferLearnClassifier(LesionClassifier):
         self.generator_train.reset()
         self.generator_val.reset()
         
-        K.get_session().run(tf.local_variables_initializer())
         self._model.fit_generator(
             self.generator_train,
             class_weight=class_weight,
@@ -170,10 +171,6 @@ class TransferLearnClassifier(LesionClassifier):
     @property
     def model(self):
         return self._model
-
-    @property
-    def model_for_checkpoint(self):
-        return self._model_for_checkpoint
 
     @property
     def model_name(self):

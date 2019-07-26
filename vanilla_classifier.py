@@ -16,7 +16,7 @@ class VanillaClassifier(LesionClassifier):
         base_model_param: Instance of `BaseModelParam`.
     """
 
-    def __init__(self, input_size=(224, 224), image_data_format=None, num_classes=None, batch_size=32, max_queue_size=10,
+    def __init__(self, input_size=(224, 224), image_data_format=None, num_classes=None, batch_size=64, max_queue_size=10,
         metrics=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         if num_classes is None:
@@ -43,7 +43,6 @@ class VanillaClassifier(LesionClassifier):
         self._model.add(GlobalAveragePooling2D())
         self._model.add(Dense(num_classes, activation='softmax'))
 
-        self._model_for_checkpoint = self._model
         # Compile the model
         self._model.compile(optimizer=Adam(lr=1e-3), loss='categorical_crossentropy', metrics=metrics)
 
@@ -55,7 +54,7 @@ class VanillaClassifier(LesionClassifier):
 
     def train(self, epoch_num, class_weight=None, workers=1):
         ### Callbacks
-        checkpoints = self._create_checkpoint_callbacks(self._model_name)
+        checkpoints = super()._create_checkpoint_callbacks(self._model, self._model_name)
         
         # Reduce learning rate when the validation loss has stopped improving.
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8, min_lr=1e-6, verbose=1)
@@ -64,9 +63,8 @@ class VanillaClassifier(LesionClassifier):
         early_stop = EarlyStopping(monitor='val_loss', patience=16, verbose=1)
 
         # Callback that streams epoch results to a csv file.
-        csv_logger = self._create_csvlogger_callback(self._model_name)
+        csv_logger = super()._create_csvlogger_callback(self._model_name)
 
-        K.get_session().run(tf.local_variables_initializer())
         return self.model.fit_generator(
             self.generator_train,
             class_weight=class_weight,
@@ -83,10 +81,6 @@ class VanillaClassifier(LesionClassifier):
     @property
     def model(self):
         return self._model
-
-    @property
-    def model_for_checkpoint(self):
-        return self._model_for_checkpoint
 
     @property
     def model_name(self):
