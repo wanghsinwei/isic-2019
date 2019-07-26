@@ -7,7 +7,6 @@ from Augmentor.Operations import CropPercentageRange
 from image_iterator import ImageIterator
 from keras.optimizers import Adam
 from keras.callbacks import ModelCheckpoint, CSVLogger
-from keras.utils import np_utils
 import keras.backend as K
 import tensorflow as tf
 from callbacks import MyModelCheckpoint
@@ -105,7 +104,7 @@ class LesionClassifier():
                           batch_size=64, workers=1, save_file_name=None):
         generator = ImageIterator(
             image_paths=df[x_col].tolist(),
-            labels=np_utils.to_categorical(df[y_col], num_classes=len(category_names)),
+            labels=None,
             augmentation_pipeline=augmentation_pipeline,
             batch_size=batch_size,
             shuffle=False,  # shuffle must be False otherwise will get a wrong balanced accuracy

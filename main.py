@@ -92,12 +92,12 @@ def main():
                                                    preprocessing_function=m['preprocessing_function'],
                                                    workers=workers,
                                                    save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], postfix))
+                del model
             else:
                 print("\"{}\" doesn't exist".format(model_filepath))
     
     # Shutdown
     if args.autoshutdown:
-        print("Shutdown at {}! It can be canceled by executing \"sudo shutdown -c\"".format(time.ctime(time.time() + 2*60)))
         os.system("sudo shutdown -h +2")
 
 
