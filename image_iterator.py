@@ -51,6 +51,12 @@ class ImageIterator(Iterator):
                              'Found: len(image_paths) = %s, len(labels) = %s' %
                              (len(image_paths), len(labels)))
 
+        if sample_weight is not None and len(image_paths) != len(sample_weight):
+            raise ValueError('`image_paths` and `sample_weight` '
+                             'should have the same length. '
+                             'Found: x.shape = %s, sample_weight.shape = %s' %
+                             (len(image_paths), len(sample_weight)))
+
         if labels is not None:
             self.labels = np.asarray(labels)
         else:

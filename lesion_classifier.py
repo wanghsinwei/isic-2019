@@ -17,7 +17,7 @@ class LesionClassifier():
         batch_size: Integer, size of a batch.
         image_data_format: String, either 'channels_first' or 'channels_last'.
     """
-    def __init__(self, input_size, image_data_format=None, batch_size=64, max_queue_size=10, rescale=None, preprocessing_func=None,
+    def __init__(self, input_size, image_data_format=None, batch_size=64, max_queue_size=10, rescale=None, preprocessing_func=None, class_weight=None,
         num_classes=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         self.log_folder = 'logs'
@@ -31,6 +31,7 @@ class LesionClassifier():
         self.max_queue_size = max_queue_size
         self.rescale = rescale
         self.preprocessing_func = preprocessing_func
+        self.class_weight = class_weight
         self.num_classes = num_classes
         self.image_paths_train = image_paths_train
         self.categories_train = categories_train
@@ -141,12 +142,18 @@ class LesionClassifier():
         )
 
         ### Validation Image Generator
+        if self.class_weight is not None:
+            sample_weight = [self.class_weight[np.argmax(x)] for x in self.categories_val]
+        else:
+            sample_weight = None
+
         generator_val = ImageIterator(
             image_paths=self.image_paths_val,
             labels=self.categories_val,
             augmentation_pipeline=self.aug_pipeline_val,
             batch_size=self.batch_size,
             shuffle=True,
+            sample_weight=sample_weight,
             rescale=self.rescale,
             preprocessing_function=self.preprocessing_func,
             pregen_augmented_images=True, # Since there is no randomness in the augmentation pipeline.

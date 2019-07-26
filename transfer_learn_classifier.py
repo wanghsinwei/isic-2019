@@ -18,7 +18,7 @@ class TransferLearnClassifier(LesionClassifier):
     """
 
     def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=64, max_queue_size=10, image_data_format=None, metrics=None,
-        gpus=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
+        class_weight=None, gpus=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         if num_classes is None:
             raise ValueError('num_classes cannot be None')
@@ -96,12 +96,12 @@ class TransferLearnClassifier(LesionClassifier):
             print('===== Training using CPU(s) =====')
 
         super().__init__(
-            input_size=base_model_param.input_size, preprocessing_func=base_model_param.preprocessing_func,
+            input_size=base_model_param.input_size, preprocessing_func=base_model_param.preprocessing_func, class_weight=class_weight,
             image_data_format=image_data_format, batch_size=batch_size, max_queue_size=max_queue_size,
             image_paths_train=image_paths_train, categories_train=categories_train,
             image_paths_val=image_paths_val, categories_val=categories_val)
 
-    def train(self, epoch_num, class_weight=None, workers=1):
+    def train(self, epoch_num, workers=1):
         
         feature_extract_epochs = 5
 
@@ -117,7 +117,7 @@ class TransferLearnClassifier(LesionClassifier):
         ### Feature extraction
         self._model.fit_generator(
             self.generator_train,
-            class_weight=class_weight,
+            class_weight=self.class_weight,
             max_queue_size=self.max_queue_size,
             workers=workers,
             use_multiprocessing=False,
@@ -156,7 +156,7 @@ class TransferLearnClassifier(LesionClassifier):
         
         self._model.fit_generator(
             self.generator_train,
-            class_weight=class_weight,
+            class_weight=self.class_weight,
             max_queue_size=self.max_queue_size,
             workers=workers,
             use_multiprocessing=False,

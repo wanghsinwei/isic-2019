@@ -136,6 +136,7 @@ def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch
         num_classes=known_category_num,
         batch_size=batch_size,
         max_queue_size=max_queue_size,
+        class_weight=class_weight_dict,
         metrics=[balanced_accuracy, 'accuracy'],
         image_paths_train=df_train['path'].tolist(),
         categories_train=np_utils.to_categorical(df_train['category'], num_classes=known_category_num),
@@ -144,7 +145,7 @@ def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch
     )
     classifier.model.summary()
     print('Begin to train Vanilla CNN')
-    classifier.train(epoch_num=epoch_num, class_weight=class_weight_dict, workers=workers)
+    classifier.train(epoch_num=epoch_num, workers=workers)
     del classifier
 
 
@@ -161,6 +162,7 @@ def train_transfer_learning(base_model_params, df_train, df_val, known_category_
             max_queue_size=max_queue_size,
             image_data_format=K.image_data_format(),
             metrics=[balanced_accuracy, 'accuracy'],
+            class_weight=class_weight_dict,
             gpus=gpus,
             image_paths_train=df_train['path'].tolist(),
             categories_train=np_utils.to_categorical(df_train['category'], num_classes=known_category_num),
@@ -169,7 +171,7 @@ def train_transfer_learning(base_model_params, df_train, df_val, known_category_
         )
         classifier.model.summary()
         print("Begin to train {}".format(model_param.class_name))
-        classifier.train(epoch_num=epoch_num, class_weight=class_weight_dict, workers=workers)
+        classifier.train(epoch_num=epoch_num, workers=workers)
         del classifier
 
 

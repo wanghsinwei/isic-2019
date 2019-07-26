@@ -16,7 +16,7 @@ class VanillaClassifier(LesionClassifier):
         base_model_param: Instance of `BaseModelParam`.
     """
 
-    def __init__(self, input_size=(224, 224), image_data_format=None, num_classes=None, batch_size=64, max_queue_size=10,
+    def __init__(self, input_size=(224, 224), image_data_format=None, num_classes=None, batch_size=64, max_queue_size=10, class_weight=None,
         metrics=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         if num_classes is None:
@@ -47,12 +47,12 @@ class VanillaClassifier(LesionClassifier):
         self._model.compile(optimizer=Adam(lr=1e-3), loss='categorical_crossentropy', metrics=metrics)
 
         super().__init__(
-            input_size=input_size, preprocessing_func=VanillaClassifier.preprocess_input,
+            input_size=input_size, preprocessing_func=VanillaClassifier.preprocess_input, class_weight=class_weight,
             image_data_format=image_data_format, batch_size=batch_size, max_queue_size=max_queue_size,
             image_paths_train=image_paths_train, categories_train=categories_train,
             image_paths_val=image_paths_val, categories_val=categories_val)
 
-    def train(self, epoch_num, class_weight=None, workers=1):
+    def train(self, epoch_num, workers=1):
         ### Callbacks
         checkpoints = super()._create_checkpoint_callbacks(self._model, self._model_name)
         
@@ -67,7 +67,7 @@ class VanillaClassifier(LesionClassifier):
 
         return self.model.fit_generator(
             self.generator_train,
-            class_weight=class_weight,
+            class_weight=self.class_weight,
             max_queue_size=self.max_queue_size,
             workers=workers,
             use_multiprocessing=False,
