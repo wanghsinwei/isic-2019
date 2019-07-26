@@ -174,6 +174,14 @@ class LesionClassifier():
             monitor='val_balanced_accuracy',
             verbose=1,
             save_best_only=True)
+
+        checkpoint_balanced_acc_weights = MyModelCheckpoint(
+            model=model,
+            filepath=os.path.join(self.saved_model_folder, "{}_best_balanced_acc_weights.hdf5".format(model_name)),
+            monitor='val_balanced_accuracy',
+            verbose=1,
+            save_weights_only=True,
+            save_best_only=True)
         
         checkpoint_latest = MyModelCheckpoint(
             model=model,
