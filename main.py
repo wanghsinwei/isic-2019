@@ -2,13 +2,13 @@ import argparse
 import os
 import time
 import tensorflow as tf
-# from keras.applications.densenet import preprocess_input as preprocess_input_densenet
-# from keras_applications.resnext import preprocess_input as preprocess_input_resnext
+from keras.applications.densenet import preprocess_input as preprocess_input_densenet
+from keras_applications.resnext import preprocess_input as preprocess_input_resnext
 from keras.applications.xception import preprocess_input as preprocess_input_xception
 from keras.applications.nasnet import preprocess_input as preprocess_input_nasnet
 from keras.applications.inception_resnet_v2 import preprocess_input as preprocess_input_inception_resnet_v2
+# from utils import preprocess_input as preprocess_input_trainset
 from keras.models import load_model
-from utils import preprocess_input as preprocess_input_trainset
 from keras import backend as K
 from keras.utils import np_utils
 from data import load_isic_data, train_validation_split, compute_class_weight_dict
@@ -106,7 +106,7 @@ def get_transfer_model_param_map():
         'DenseNet201': BaseModelParam(module_name='keras.applications.densenet',
                                       class_name='DenseNet201',
                                       input_size=(224, 224),
-                                      preprocessing_func=preprocess_input_trainset),
+                                      preprocessing_func=preprocess_input_densenet),
         'Xception': BaseModelParam(module_name='keras.applications.xception',
                                    class_name='Xception',
                                    input_size=(299, 299),
@@ -122,7 +122,7 @@ def get_transfer_model_param_map():
         'ResNeXt50': BaseModelParam(module_name='keras_applications.resnext',
                                       class_name='ResNeXt50',
                                       input_size=(224, 224),
-                                      preprocessing_func=preprocess_input_trainset)
+                                      preprocessing_func=preprocess_input_resnext)
     }
     return base_model_params
 
