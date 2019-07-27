@@ -1,6 +1,6 @@
 import argparse
 import os
-import time
+import datetime
 import tensorflow as tf
 # from keras.applications.densenet import preprocess_input as preprocess_input_densenet
 # from keras_applications.resnext import preprocess_input as preprocess_input_resnext
@@ -31,6 +31,10 @@ def main():
     parser.add_argument('--skiptraining', dest='skiptraining', action='store_true', help='Skip training processes')
     args = parser.parse_args()
     print(args)
+
+    # Write command to a file
+    with open('Cmd_History.txt', 'a') as f:
+        f.write("{}\t{}\n".format(str(datetime.datetime.utcnow()), str(args)))
 
     # Check if GPU available
     gpus = args.gpus
