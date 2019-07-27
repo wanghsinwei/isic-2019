@@ -142,18 +142,12 @@ class LesionClassifier():
         )
 
         ### Validation Image Generator
-        if self.class_weight is not None:
-            sample_weight = [self.class_weight[np.argmax(x)] for x in self.categories_val]
-        else:
-            sample_weight = None
-
         generator_val = ImageIterator(
             image_paths=self.image_paths_val,
             labels=self.categories_val,
             augmentation_pipeline=self.aug_pipeline_val,
             batch_size=self.batch_size,
             shuffle=True,
-            sample_weight=sample_weight,
             rescale=self.rescale,
             preprocessing_function=self.preprocessing_func,
             pregen_augmented_images=True, # Since there is no randomness in the augmentation pipeline.
