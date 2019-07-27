@@ -190,7 +190,7 @@ class LesionClassifier():
             verbose=1,
             save_best_only=True)
         
-        return [checkpoint_balanced_acc, checkpoint_latest, checkpoint_loss]
+        return [checkpoint_balanced_acc, checkpoint_balanced_acc_weights, checkpoint_latest, checkpoint_loss]
 
     def _create_csvlogger_callback(self, model_name):
         if not os.path.exists(self.log_folder):
