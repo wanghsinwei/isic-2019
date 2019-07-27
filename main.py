@@ -21,7 +21,7 @@ from lesion_classifier import LesionClassifier
 def main():
     parser = argparse.ArgumentParser(description='ISIC-2019 Skin Lesion Classifiers')
     parser.add_argument('data', metavar='DIR', help='path to data foler')
-    parser.add_argument('--batchsize', type=int, help='Batch size (default: %(default)s)', default=64)
+    parser.add_argument('--batchsize', type=int, help='Batch size (default: %(default)s)', default=32)
     parser.add_argument('--maxqueuesize', type=int, help='Maximum size for the generator queue (default: %(default)s)', default=10)
     parser.add_argument('--epoch', type=int, help='Number of epochs', required=True)
     parser.add_argument('--vanilla', dest='vanilla', action='store_true', help='Train Vanilla CNN')

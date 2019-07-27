@@ -17,7 +17,7 @@ class LesionClassifier():
         batch_size: Integer, size of a batch.
         image_data_format: String, either 'channels_first' or 'channels_last'.
     """
-    def __init__(self, input_size, image_data_format=None, batch_size=64, max_queue_size=10, rescale=None, preprocessing_func=None, class_weight=None,
+    def __init__(self, input_size, image_data_format=None, batch_size=32, max_queue_size=10, rescale=None, preprocessing_func=None, class_weight=None,
         num_classes=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         self.log_folder = 'logs'
@@ -102,7 +102,7 @@ class LesionClassifier():
     @staticmethod
     def predict_dataframe(model, df, x_col='path', y_col='category', id_col='image', category_names=None,
                           augmentation_pipeline=None, preprocessing_function=None,
-                          batch_size=64, workers=1, save_file_name=None):
+                          batch_size=32, workers=1, save_file_name=None):
         generator = ImageIterator(
             image_paths=df[x_col].tolist(),
             labels=None,

@@ -26,7 +26,7 @@ class ImageIterator(Iterator):
                  image_paths,
                  labels=None,
                  augmentation_pipeline=None,
-                 batch_size=64,
+                 batch_size=32,
                  shuffle=False,
                  sample_weight=None,
                  seed=None,
