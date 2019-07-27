@@ -110,3 +110,4 @@ venv.bak/
 logs/
 saved_models/
 predict_results/
+Cmd_History.txt
