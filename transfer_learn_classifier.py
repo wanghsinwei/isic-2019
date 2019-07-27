@@ -107,7 +107,7 @@ class TransferLearnClassifier(LesionClassifier):
 
     def train(self, epoch_num, workers=1):
         
-        feature_extract_epochs = 10
+        feature_extract_epochs = 3
 
         # Checkpoint Callbacks
         checkpoints = super()._create_checkpoint_callbacks(self._model_for_checkpoint, self._model_name)
