@@ -46,6 +46,7 @@ def calculate_mean_std(img_paths):
 
 def preprocess_input(x, data_format=None, **kwargs):
     """Preprocesses a numpy array encoding a batch of images. Each image is normalized by subtracting the mean and dividing by the standard deviation channel-wise.
+    This function only implements the 'torch' mode which scale pixels between 0 and 1 and then will normalize each channel with respect to the training dataset (not include validation set).
     # Arguments
         x: a 3D or 4D numpy array consists of RGB values within [0, 255].
         data_format: data format of the image tensor.

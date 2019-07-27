@@ -2,12 +2,12 @@ import argparse
 import os
 import time
 import tensorflow as tf
-from keras.applications.densenet import preprocess_input as preprocess_input_densenet
-from keras_applications.resnext import preprocess_input as preprocess_input_resnext
+# from keras.applications.densenet import preprocess_input as preprocess_input_densenet
+# from keras_applications.resnext import preprocess_input as preprocess_input_resnext
 from keras.applications.xception import preprocess_input as preprocess_input_xception
 from keras.applications.nasnet import preprocess_input as preprocess_input_nasnet
 from keras.applications.inception_resnet_v2 import preprocess_input as preprocess_input_inception_resnet_v2
-# from utils import preprocess_input as preprocess_input_trainset
+from utils import preprocess_input as preprocess_input_trainset
 from keras.models import load_model
 from keras import backend as K
 from keras.utils import np_utils
@@ -106,7 +106,7 @@ def get_transfer_model_param_map():
         'DenseNet201': BaseModelParam(module_name='keras.applications.densenet',
                                       class_name='DenseNet201',
                                       input_size=(224, 224),
-                                      preprocessing_func=preprocess_input_densenet),
+                                      preprocessing_func=preprocess_input_trainset),
         'Xception': BaseModelParam(module_name='keras.applications.xception',
                                    class_name='Xception',
                                    input_size=(299, 299),
@@ -122,7 +122,7 @@ def get_transfer_model_param_map():
         'ResNeXt50': BaseModelParam(module_name='keras_applications.resnext',
                                       class_name='ResNeXt50',
                                       input_size=(224, 224),
-                                      preprocessing_func=preprocess_input_resnext)
+                                      preprocessing_func=preprocess_input_trainset)
     }
     return base_model_params
 
@@ -155,9 +155,9 @@ def train_transfer_learning(base_model_params, df_train, df_val, known_category_
     for model_param in base_model_params:
         classifier = TransferLearnClassifier(
             base_model_param=model_param,
-            fc_layers=None, # e.g. [512]
+            fc_layers=[512], # e.g. [512]
             num_classes=known_category_num,
-            dropout=None, # e.g. 0.3
+            dropout=0.3, # e.g. 0.3
             batch_size=batch_size,
             max_queue_size=max_queue_size,
             image_data_format=K.image_data_format(),
