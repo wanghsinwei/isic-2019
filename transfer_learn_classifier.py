@@ -65,10 +65,11 @@ class TransferLearnClassifier(LesionClassifier):
             x = self._base_model.output
             x = GlobalAveragePooling2D()(x)
             # Add fully connected layers
-            for fc in fc_layers:
-                x = Dense(fc, activation='relu')(x)
-                if dropout is not None:
-                    x = Dropout(rate=dropout)(x)
+            if fc_layers is not None:
+                for fc in fc_layers:
+                    x = Dense(fc, activation='relu')(x)
+                    if dropout is not None:
+                        x = Dropout(rate=dropout)(x)
 
             # Final layer with softmax activation
             predictions = Dense(num_classes, activation='softmax')(x)

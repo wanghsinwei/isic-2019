@@ -155,9 +155,9 @@ def train_transfer_learning(base_model_params, df_train, df_val, known_category_
     for model_param in base_model_params:
         classifier = TransferLearnClassifier(
             base_model_param=model_param,
-            fc_layers=[512],
+            fc_layers=None, # e.g. [512]
             num_classes=known_category_num,
-            dropout=0.3,
+            dropout=None, # e.g. 0.3
             batch_size=batch_size,
             max_queue_size=max_queue_size,
             image_data_format=K.image_data_format(),
