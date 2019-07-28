@@ -26,7 +26,6 @@ def main():
     parser.add_argument('--epoch', type=int, help='Number of epochs', required=True)
     parser.add_argument('--vanilla', dest='vanilla', action='store_true', help='Train Vanilla CNN')
     parser.add_argument('--transfer', dest='transfer_models', nargs='*', help='Models for Transfer Learning')
-    parser.add_argument('--gpus', type=int, help='Number of GPUs')
     parser.add_argument('--autoshutdown', dest='autoshutdown', action='store_true', help='Automatically shutdown the computer after training is done')
     parser.add_argument('--skiptraining', dest='skiptraining', action='store_true', help='Skip training processes')
     args = parser.parse_args()
@@ -35,12 +34,6 @@ def main():
     # Write command to a file
     with open('Cmd_History.txt', 'a') as f:
         f.write("{}\t{}\n".format(str(datetime.datetime.utcnow()), str(args)))
-
-    # Check if GPU available
-    gpus = args.gpus
-    if gpus is not None and not tf.test.is_gpu_available():
-        print('GPU is not available!')
-        gpus = None
 
     data_folder = args.data
     pred_result_folder = 'predict_results'
@@ -74,7 +67,7 @@ def main():
         model_param_map = get_transfer_model_param_map()
         base_model_params = [model_param_map[x] for x in args.transfer_models]
         if not args.skiptraining:
-            train_transfer_learning(base_model_params, df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num, gpus)
+            train_transfer_learning(base_model_params, df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num)
         for base_model_param in base_model_params:
             models_to_predict_val.append({'model_name': base_model_param.class_name,
                                         'input_size': base_model_param.input_size,
@@ -153,7 +146,7 @@ def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch
     del classifier
 
 
-def train_transfer_learning(base_model_params, df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num, gpus=None):
+def train_transfer_learning(base_model_params, df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num):
     workers = os.cpu_count()
 
     for model_param in base_model_params:
@@ -167,7 +160,6 @@ def train_transfer_learning(base_model_params, df_train, df_val, known_category_
             image_data_format=K.image_data_format(),
             metrics=[balanced_accuracy, 'accuracy'],
             class_weight=class_weight_dict,
-            gpus=gpus,
             image_paths_train=df_train['path'].tolist(),
             categories_train=np_utils.to_categorical(df_train['category'], num_classes=known_category_num),
             image_paths_val=df_val['path'].tolist(),

@@ -8,7 +8,6 @@ from keras.layers import Dense, Activation, GlobalAveragePooling2D, Dropout
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.callbacks import ReduceLROnPlateau, EarlyStopping
-from keras.utils import multi_gpu_model
 
 class TransferLearnClassifier(LesionClassifier):
     """Skin lesion classifier based on transfer learning.
@@ -18,7 +17,7 @@ class TransferLearnClassifier(LesionClassifier):
     """
 
     def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=32, max_queue_size=10, image_data_format=None, metrics=None,
-        class_weight=None, gpus=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
+        class_weight=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         if num_classes is None:
             raise ValueError('num_classes cannot be None')
@@ -38,64 +37,34 @@ class TransferLearnClassifier(LesionClassifier):
         module = import_module(base_model_param.module_name)
         class_ = getattr(module, base_model_param.class_name)
         
-        self.gpus = gpus
         start_lr = 1e-4
 
-        if gpus == 1:
-            device_name = '/device:GPU:0'
+        # create an instance of base model which is pre-trained on the ImageNet dataset.
+        if base_model_param.class_name == 'ResNeXt50':
+            # A workaround to use ResNeXt in Keras 2.2.4.
+            # See http://donghao.org/2019/02/22/using-resnext-in-keras-2-2-4/
+            self._base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape,
+                                        backend=keras.backend, layers=keras.layers, models=keras.models, utils=keras.utils)
         else:
-            # If gpus >= 2, the model's weights are merged on CPU.
-            # Reference https://keras.io/utils/#multi_gpu_model
-            device_name = '/cpu:0'
+            self._base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape)
 
-        with tf.device(device_name):
-            # create an instance of base model which is pre-trained on the ImageNet dataset.
-            if base_model_param.class_name == 'ResNeXt50':
-                # A workaround to use ResNeXt in Keras 2.2.4.
-                # See http://donghao.org/2019/02/22/using-resnext-in-keras-2-2-4/
-                self._base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape,
-                                          backend=keras.backend, layers=keras.layers, models=keras.models, utils=keras.utils)
-            else:
-                self._base_model = class_(include_top=False, weights='imagenet', input_shape=input_shape)
+        # Freeze all layers in the base model
+        for layer in self._base_model.layers:
+            layer.trainable = False
 
-            # Freeze all layers in the base model
-            for layer in self._base_model.layers:
-                layer.trainable = False
+        x = self._base_model.output
+        x = GlobalAveragePooling2D()(x)
+        # Add fully connected layers
+        if fc_layers is not None:
+            for fc in fc_layers:
+                x = Dense(fc, activation='relu')(x)
+                if dropout is not None:
+                    x = Dropout(rate=dropout)(x)
 
-            x = self._base_model.output
-            x = GlobalAveragePooling2D()(x)
-            # Add fully connected layers
-            if fc_layers is not None:
-                for fc in fc_layers:
-                    x = Dense(fc, activation='relu')(x)
-                    if dropout is not None:
-                        x = Dropout(rate=dropout)(x)
-
-            # Final layer with softmax activation
-            predictions = Dense(num_classes, activation='softmax')(x)
-            # Create the model
-            model = Model(inputs=self._base_model.input, outputs=predictions)
-            # Compile the model
-            # model.compile(optimizer=Adam(lr=start_lr), loss='categorical_crossentropy', metrics=self.metrics)
-
-        self._model_for_checkpoint = model
-
-        if gpus is not None and gpus >= 2:
-            try:
-                self._model = multi_gpu_model(model, gpus=gpus)
-                # Compile the model
-                # self._model.compile(optimizer=Adam(lr=start_lr), loss='categorical_crossentropy', metrics=self.metrics)
-                print('===== Training using multiple GPUs =====')
-            except ValueError:
-                self._model = model
-                print('===== Training using CPU(s) =====')
-        elif gpus == 1:
-            self._model = model
-            print('===== Training using single GPU =====')
-        else:
-            self._model = model
-            print('===== Training using CPU(s) =====')
-
+        # Final layer with softmax activation
+        predictions = Dense(num_classes, activation='softmax')(x)
+        # Create the model
+        self._model = Model(inputs=self._base_model.input, outputs=predictions)
         # Compile the model
         self._model.compile(optimizer=Adam(lr=start_lr), loss='categorical_crossentropy', metrics=self.metrics)
 
@@ -110,13 +79,13 @@ class TransferLearnClassifier(LesionClassifier):
         feature_extract_epochs = 3
 
         # Checkpoint Callbacks
-        checkpoints = super()._create_checkpoint_callbacks(self._model_for_checkpoint, self._model_name)
+        checkpoints = super()._create_checkpoint_callbacks()
 
         # This ReduceLROnPlateau is just a workaround to make csv_logger record learning rate, and won't affect learning rate during feature extraction epochs.
         reduce_lr = ReduceLROnPlateau(patience=feature_extract_epochs+10, verbose=1)
 
         # Callback that streams epoch results to a csv file.
-        csv_logger = super()._create_csvlogger_callback(self._model_name)
+        csv_logger = super()._create_csvlogger_callback()
 
         ### Feature extraction
         self._model.fit_generator(
@@ -141,13 +110,11 @@ class TransferLearnClassifier(LesionClassifier):
         fine_tuning_start_lr = 1e-5
 
         # Compile the model
-        # if self.gpus is not None and self.gpus >= 2:
-        #     self._model_for_checkpoint.compile(optimizer=Adam(lr=fine_tuning_start_lr), loss='categorical_crossentropy', metrics=self.metrics)
         self._model.compile(optimizer=Adam(lr=fine_tuning_start_lr), loss='categorical_crossentropy', metrics=self.metrics)
         self._model.summary()
 
         # Re-create Checkpoint Callbacks
-        checkpoints = super()._create_checkpoint_callbacks(self._model_for_checkpoint, self._model_name)
+        checkpoints = super()._create_checkpoint_callbacks()
 
         # Reduce learning rate when the validation loss has stopped improving.
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8, min_lr=1e-7, verbose=1)

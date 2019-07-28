@@ -9,7 +9,6 @@ from keras.optimizers import Adam
 from keras.callbacks import ModelCheckpoint, CSVLogger
 import keras.backend as K
 import tensorflow as tf
-from callbacks import MyModelCheckpoint
 
 class LesionClassifier():
     """Base class of skin lesion classifier.
@@ -156,47 +155,43 @@ class LesionClassifier():
 
         return generator_train, generator_val
 
-    def _create_checkpoint_callbacks(self, model, model_name):
+    def _create_checkpoint_callbacks(self):
         """Create the functions to be applied at given stages of the training procedure."""
 
         if not os.path.exists(self.saved_model_folder):
             os.makedirs(self.saved_model_folder)
         
-        checkpoint_balanced_acc = MyModelCheckpoint(
-            model=model,
-            filepath=os.path.join(self.saved_model_folder, "{}_best_balanced_acc.hdf5".format(model_name)),
+        checkpoint_balanced_acc = ModelCheckpoint(
+            filepath=os.path.join(self.saved_model_folder, "{}_best_balanced_acc.hdf5".format(self.model_name)),
             monitor='val_balanced_accuracy',
             verbose=1,
             save_best_only=True)
 
-        checkpoint_balanced_acc_weights = MyModelCheckpoint(
-            model=model,
-            filepath=os.path.join(self.saved_model_folder, "{}_best_balanced_acc_weights.hdf5".format(model_name)),
+        checkpoint_balanced_acc_weights = ModelCheckpoint(
+            filepath=os.path.join(self.saved_model_folder, "{}_best_balanced_acc_weights.hdf5".format(self.model_name)),
             monitor='val_balanced_accuracy',
             verbose=1,
             save_weights_only=True,
             save_best_only=True)
         
-        checkpoint_latest = MyModelCheckpoint(
-            model=model,
-            filepath=os.path.join(self.saved_model_folder, "{}_latest.hdf5".format(model_name)),
+        checkpoint_latest = ModelCheckpoint(
+            filepath=os.path.join(self.saved_model_folder, "{}_latest.hdf5".format(self.model_name)),
             verbose=1,
             save_best_only=False)
 
-        checkpoint_loss = MyModelCheckpoint(
-            model=model,
-            filepath=os.path.join(self.saved_model_folder, "{}_best_loss.hdf5".format(model_name)),
+        checkpoint_loss = ModelCheckpoint(
+            filepath=os.path.join(self.saved_model_folder, "{}_best_loss.hdf5".format(self.model_name)),
             monitor='val_loss',
             verbose=1,
             save_best_only=True)
         
         return [checkpoint_balanced_acc, checkpoint_balanced_acc_weights, checkpoint_latest, checkpoint_loss]
 
-    def _create_csvlogger_callback(self, model_name):
+    def _create_csvlogger_callback(self):
         if not os.path.exists(self.log_folder):
             os.makedirs(self.log_folder)
 
-        return CSVLogger(filename=os.path.join(self.log_folder, "{}.training.csv".format(model_name)), append=True)
+        return CSVLogger(filename=os.path.join(self.log_folder, "{}.training.csv".format(self.model_name)), append=True)
 
     @property
     def model(self):
