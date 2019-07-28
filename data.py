@@ -23,4 +23,4 @@ def compute_class_weight_dict(df_train):
     """Compute class weights for weighting the loss function on imbalanced data."""
     class_weights = class_weight.compute_class_weight('balanced', np.unique(df_train['category']), df_train['category'])
     class_weight_dict = dict(enumerate(class_weights))
-    return class_weight_dict
+    return class_weight_dict, class_weights

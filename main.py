@@ -48,7 +48,7 @@ def main():
     ground_truth_file = os.path.join(data_folder, 'ISIC_2019_Training_GroundTruth.csv')
     df_ground_truth, category_names = load_isic_data(derm_image_folder, ground_truth_file)
     df_train, df_val = train_validation_split(df_ground_truth)
-    class_weight_dict = compute_class_weight_dict(df_train)
+    class_weight_dict, _ = compute_class_weight_dict(df_train)
 
     # Models used to predict validation set
     models_to_predict_val = []
