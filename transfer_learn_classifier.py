@@ -61,8 +61,9 @@ class TransferLearnClassifier(LesionClassifier):
                 if dropout is not None:
                     x = Dropout(rate=dropout)(x)
 
-        # Final layer with softmax activation
-        predictions = Dense(num_classes, activation='softmax')(x)
+        # Final dense layer and softmax activation layer
+        x = Dense(num_classes, name='dense_pred')(x)
+        predictions = Activation('softmax', name='probs')(x)
         # Create the model
         self._model = Model(inputs=self._base_model.input, outputs=predictions)
         # Compile the model

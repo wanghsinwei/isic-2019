@@ -1,7 +1,7 @@
 import os
 import tensorflow as tf
 from keras import backend as K
-from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D, Dropout, Dense
+from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D, Dropout, Dense, Activation
 from keras.models import Sequential
 from keras.optimizers import Adam
 from keras.applications import imagenet_utils
@@ -41,7 +41,8 @@ class VanillaClassifier(LesionClassifier):
 
         self._model.add(Dropout(rate=0.3))
         self._model.add(GlobalAveragePooling2D())
-        self._model.add(Dense(num_classes, activation='softmax'))
+        self._model.add(Dense(num_classes, name='dense_pred'))
+        self._model.add(Activation('softmax', name='probs'))
 
         # Compile the model
         self._model.compile(optimizer=Adam(lr=1e-3), loss='categorical_crossentropy', metrics=metrics)
