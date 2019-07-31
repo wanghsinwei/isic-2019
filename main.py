@@ -82,7 +82,7 @@ def main():
             if os.path.exists(model_filepath):
                 print("===== Predict validation set using \"{}_{}\" model =====".format(m['model_name'], postfix))
                 model = load_model(filepath=model_filepath,
-                                   custom_objects={'balanced_accuracy': balanced_accuracy})
+                                   custom_objects={'balanced_accuracy': balanced_accuracy(len(category_names))})
                 LesionClassifier.predict_dataframe(model=model, df=df_val,
                                                    category_names=category_names,
                                                    augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(m['input_size']),
@@ -135,7 +135,7 @@ def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch
         batch_size=batch_size,
         max_queue_size=max_queue_size,
         class_weight=class_weight_dict,
-        metrics=[balanced_accuracy, 'accuracy'],
+        metrics=[balanced_accuracy(known_category_num), 'accuracy'],
         image_paths_train=df_train['path'].tolist(),
         categories_train=np_utils.to_categorical(df_train['category'], num_classes=known_category_num),
         image_paths_val=df_val['path'].tolist(),
@@ -160,7 +160,7 @@ def train_transfer_learning(base_model_params, df_train, df_val, known_category_
             batch_size=batch_size,
             max_queue_size=max_queue_size,
             image_data_format=K.image_data_format(),
-            metrics=[balanced_accuracy, 'accuracy'],
+            metrics=[balanced_accuracy(known_category_num), 'accuracy'],
             class_weight=class_weight_dict,
             image_paths_train=df_train['path'].tolist(),
             categories_train=np_utils.to_categorical(df_train['category'], num_classes=known_category_num),

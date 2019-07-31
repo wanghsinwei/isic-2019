@@ -70,7 +70,7 @@ class TransferLearnClassifier(LesionClassifier):
         self._model.compile(optimizer=Adam(lr=start_lr), loss='categorical_crossentropy', metrics=self.metrics)
 
         super().__init__(
-            input_size=base_model_param.input_size, preprocessing_func=base_model_param.preprocessing_func, class_weight=class_weight,
+            input_size=base_model_param.input_size, preprocessing_func=base_model_param.preprocessing_func, class_weight=class_weight, num_classes=num_classes,
             image_data_format=image_data_format, batch_size=batch_size, max_queue_size=max_queue_size,
             image_paths_train=image_paths_train, categories_train=categories_train,
             image_paths_val=image_paths_val, categories_val=categories_val)
