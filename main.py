@@ -90,6 +90,7 @@ def main():
                                                    workers=workers,
                                                    save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], postfix))
                 del model
+                K.clear_session()
             else:
                 print("\"{}\" doesn't exist".format(model_filepath))
     
@@ -144,6 +145,7 @@ def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch
     print('Begin to train Vanilla CNN')
     classifier.train(epoch_num=epoch_num, workers=workers)
     del classifier
+    K.clear_session()
 
 
 def train_transfer_learning(base_model_params, df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num):
@@ -169,6 +171,7 @@ def train_transfer_learning(base_model_params, df_train, df_val, known_category_
         print("Begin to train {}".format(model_param.class_name))
         classifier.train(epoch_num=epoch_num, workers=workers)
         del classifier
+        K.clear_session()
 
 
 if __name__ == '__main__':
