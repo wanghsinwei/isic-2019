@@ -119,7 +119,8 @@ class LesionClassifier():
 
         # Save the predicted results as a csv file
         df_pred = pd.DataFrame(predicted_vector, columns=category_names)
-        df_pred[y_col] = df[y_col].to_numpy()
+        if y_col in df.columns:
+            df_pred[y_col] = df[y_col].to_numpy()
         df_pred['pred_'+y_col] = np.argmax(predicted_vector, axis=1)
         df_pred.insert(0, id_col, df[id_col].to_numpy())
         if save_file_name is not None:

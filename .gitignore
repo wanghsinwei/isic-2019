@@ -110,4 +110,6 @@ venv.bak/
 logs/
 saved_models/
 predict_results/
+out_dist_predict_results/
 Cmd_History.txt
+softmax_scores/

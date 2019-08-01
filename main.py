@@ -47,6 +47,7 @@ def main():
     derm_image_folder = os.path.join(data_folder, 'ISIC_2019_Training_Input')
     ground_truth_file = os.path.join(data_folder, 'ISIC_2019_Training_GroundTruth.csv')
     df_ground_truth, category_names = load_isic_data(derm_image_folder, ground_truth_file)
+    known_category_num = len(category_names)
     df_train, df_val = train_validation_split(df_ground_truth)
     class_weight_dict, _ = compute_class_weight_dict(df_train)
 
@@ -57,7 +58,7 @@ def main():
     if args.vanilla:
         input_size_vanilla = (224, 224)
         if not args.skiptraining:
-            train_vanilla(df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num, input_size_vanilla)
+            train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num, input_size_vanilla)
         models_to_predict_val.append({'model_name': 'Vanilla',
                                       'input_size': input_size_vanilla,
                                       'preprocessing_function': VanillaClassifier.preprocess_input})
@@ -67,7 +68,7 @@ def main():
         model_param_map = get_transfer_model_param_map()
         base_model_params = [model_param_map[x] for x in args.transfer_models]
         if not args.skiptraining:
-            train_transfer_learning(base_model_params, df_train, df_val, len(category_names), class_weight_dict, batch_size, max_queue_size, epoch_num)
+            train_transfer_learning(base_model_params, df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num)
         for base_model_param in base_model_params:
             models_to_predict_val.append({'model_name': base_model_param.class_name,
                                         'input_size': base_model_param.input_size,
@@ -82,7 +83,7 @@ def main():
             if os.path.exists(model_filepath):
                 print("===== Predict validation set using \"{}_{}\" model =====".format(m['model_name'], postfix))
                 model = load_model(filepath=model_filepath,
-                                   custom_objects={'balanced_accuracy': balanced_accuracy(len(category_names))})
+                                   custom_objects={'balanced_accuracy': balanced_accuracy(known_category_num)})
                 LesionClassifier.predict_dataframe(model=model, df=df_val,
                                                    category_names=category_names,
                                                    augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(m['input_size']),
