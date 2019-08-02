@@ -19,7 +19,7 @@ from Augmentor import Pipeline
 from tqdm import trange
 
 class ImageIterator(Iterator):
-    """Iterator yielding data from image file paths.
+    """Iterator yielding data from image file paths. This is an infinite generator.
     """
 
     def __init__(self,
