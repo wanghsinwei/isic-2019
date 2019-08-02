@@ -29,15 +29,15 @@ def main():
     parser.add_argument('data', metavar='DIR', help='path to data foler')
     parser.add_argument('--batchsize', type=int, help='Batch size (default: %(default)s)', default=32)
     parser.add_argument('--maxqueuesize', type=int, help='Maximum size for the generator queue (default: %(default)s)', default=10)
-    parser.add_argument('--epoch', type=int, help='Number of epochs', required=True)
+    parser.add_argument('--epoch', type=int, help='Number of epochs (default: %(default)s)', default=100)
     parser.add_argument('--vanilla', dest='vanilla', action='store_true', help='Train Vanilla CNN')
     parser.add_argument('--transfer', dest='transfer_models', nargs='*', help='Models for Transfer Learning')
     parser.add_argument('--autoshutdown', dest='autoshutdown', action='store_true', help='Automatically shutdown the computer after everything is done')
     parser.add_argument('--skiptraining', dest='skiptraining', action='store_true', help='Skip training processes')
     parser.add_argument('--skippredict', dest='skippredict', action='store_true', help='Skip predicting validation set')
     parser.add_argument('--skipodin', dest='skipodin', action='store_true', help='Skip computing ODIN softmax scores')
-    parser.add_argument('--temper', type=int, help='Temperature (default: %(default)s)', default=1000)
-    parser.add_argument('--noisemag', type=float, help='Noise/Perturbation Magnitude (default: %(default)s)', default=0.0014)
+    parser.add_argument('--temperature', type=int, help='Temperature (default: %(default)s)', default=1000)
+    parser.add_argument('--magnitude', type=float, help='Noise/Perturbation Magnitude (default: %(default)s)', default=0.0014)
     args = parser.parse_args()
     print(args)
 
@@ -96,26 +96,26 @@ def main():
                 model_filepath = os.path.join(saved_model_folder, "{}_{}.hdf5".format(m['model_name'], postfix))
                 if os.path.exists(model_filepath):
                     print("===== Predict validation set using \"{}_{}\" model =====".format(m['model_name'], postfix))
-                    model = load_model(filepath=model_filepath,
-                                    custom_objects={'balanced_accuracy': balanced_accuracy(known_category_num)})
+                    model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(known_category_num)})
                     LesionClassifier.predict_dataframe(model=model, df=df_val,
-                                                    category_names=category_names,
-                                                    augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(m['input_size']),
-                                                    preprocessing_function=m['preprocessing_function'],
-                                                    workers=workers,
-                                                    save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], postfix))
+                                                       category_names=category_names,
+                                                       augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(m['input_size']),
+                                                       preprocessing_function=m['preprocessing_function'],
+                                                       workers=workers,
+                                                       save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], postfix))
                     del model
                     K.clear_session()
                 else:
                     print("\"{}\" doesn't exist".format(model_filepath))
 
+    # Compute ODIN Softmax Scores
     if not args.skipodin:
         compute_odin_softmax_scores(pred_result_folder=pred_result_folder, derm_image_folder=derm_image_folder,
                                     out_dist_pred_result_folder=out_dist_pred_result_folder, out_dist_image_folder=out_dist_image_folder,
                                     saved_model_folder=saved_model_folder,
                                     num_classes=known_category_num,
-                                    temperature=args.temper,
-                                    noise_magnitude=args.noisemag)
+                                    temperature=args.temperature,
+                                    noise_magnitude=args.magnitude)
 
     # Shutdown
     if args.autoshutdown:
