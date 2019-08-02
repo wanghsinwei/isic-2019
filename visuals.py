@@ -4,7 +4,9 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix
 
-def plot_complexity_graph(csv_file, title=None, figsize=(14, 10), feature_extract_epochs=None):
+
+def plot_complexity_graph(csv_file, title=None, figsize=(14, 10), feature_extract_epochs=None,
+                          loss_min=0, loss_max=2, epoch_min=None, epoch_max=90, accuracy_min=0, accuracy_max=1):
     df = pd.read_csv(csv_file)
 
     fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=figsize)
@@ -14,11 +16,15 @@ def plot_complexity_graph(csv_file, title=None, figsize=(14, 10), feature_extrac
     ax1.plot(df['loss'], label='Training Loss')
     ax1.plot(df['val_loss'], label='Validation Loss')
     ax1.set(title='Training and Validation Loss', xlabel='', ylabel='Loss')
+    ax1.set_xlim([epoch_min, epoch_max])
+    ax1.set_ylim([loss_min, loss_max])
     ax1.legend()
 
     ax2.plot(df['balanced_accuracy'], label='Training Accuracy')
     ax2.plot(df['val_balanced_accuracy'], label='Validation Accuracy')
     ax2.set(title='Training and Validation Accuracy', xlabel='epoch', ylabel='Balanced Accuracy')
+    ax2.set_xlim([epoch_min, epoch_max])
+    ax2.set_ylim([accuracy_min, accuracy_max])
     ax2.legend()
 
     if feature_extract_epochs is not None:
