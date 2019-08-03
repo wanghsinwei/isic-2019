@@ -96,7 +96,7 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                     df = df_out
                     images = images_out
 
-                print("Computing Temperature: {}, Magnitude: {}, {}-Distribution".format(odinparam.temperature, odinparam.magnitude, dist))
+                print("\n===== Temperature: {}, Magnitude: {}, {}-Distribution =====".format(odinparam.temperature, odinparam.magnitude, dist))
                 softmax_score_folder = os.path.join(softmax_score_root_folder, "{}_{}".format(odinparam.temperature, odinparam.magnitude))
                 os.makedirs(softmax_score_folder, exist_ok=True)
 
@@ -192,6 +192,7 @@ def compute_tpr95(scores_in, scores_out, delta_start, delta_end, delta_num=10000
             fpr += error
             tpr95_delta_count += 1
     fpr = fpr/tpr95_delta_count
+    # TODO: The optimal delta is chosen to minimize the FPR at TPR 95%
     print("fpr:{}, tpr95_delta_count:{}, tpr95_delta_min:{}, tpr95_delta_max:{}".format(
         fpr, tpr95_delta_count, tpr95_delta_min, tpr95_delta_max))
     return fpr, tpr95_delta_count, tpr95_delta_min, tpr95_delta_max
