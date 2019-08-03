@@ -33,7 +33,7 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
     
     # ODIN parameters
     OdinParam = NamedTuple('OdinParam', [('temperature', int), ('magnitude', float)])
-    temperatures = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
+    temperatures = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1]
     magnitudes = np.round(np.arange(0, 0.0041, 0.0002), 4)
 
     model_param_map = get_transfer_model_param_map()
@@ -67,7 +67,6 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
         # Out-distribution data
         df_out = pd.read_csv(os.path.join(out_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
         df_out['path'] = df_out.apply(lambda row : os.path.join(out_dist_image_folder, row['image']+'.jpg'), axis=1)
-        print('Preparing Out-distribution Images')
         generator_out = ImageIterator(
                 image_paths=df_out['path'].tolist(),
                 labels=None,
@@ -97,7 +96,7 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                     df = df_out
                     images = images_out
 
-                print("ODIN Temperature: {}, Magnitude: {}, {}-Distribution".format(odinparam.temperature, odinparam.magnitude, dist))
+                print("Computing Temperature: {}, Magnitude: {}, {}-Distribution".format(odinparam.temperature, odinparam.magnitude, dist))
                 softmax_score_folder = os.path.join(softmax_score_root_folder, "{}_{}".format(odinparam.temperature, odinparam.magnitude))
                 os.makedirs(softmax_score_folder, exist_ok=True)
 
@@ -125,7 +124,7 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 get_dense_pred_layer_output = K.function(model.inputs + [K.learning_phase()], [dense_pred_layer_output])
 
                 f = open(os.path.join(softmax_score_folder, "{}_{}_ODIN_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w')
-                for image in tqdm(images, desc='ODIN Softmax Scores'):
+                for image in tqdm(images, desc="{}-Distribution Softmax Scores".format(dist)):
                     perturbations = compute_perturbations([image, learning_phase])[0]
 
                     # Get sign of perturbations
