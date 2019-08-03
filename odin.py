@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 import pandas as pd
 from typing import NamedTuple
@@ -9,7 +10,7 @@ from image_iterator import ImageIterator
 from metrics import balanced_accuracy
 from keras_numpy_backend import softmax
 from lesion_classifier import LesionClassifier
-from tqdm import trange
+from tqdm import tqdm, trange
 
 def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_pred_result_folder, out_dist_image_folder, saved_model_folder, num_classes):
     ModelAttr = NamedTuple('ModelAttr', [('model_name', str), ('postfix', str)])
@@ -111,3 +112,56 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 f.close()
         del model
         K.clear_session()
+
+
+def compute_tpr95(scores_in, scores_out, delta_start, delta_end, delta_num=100000):
+    tpr95_min = 0.9495
+    tpr95_max = 0.9505
+    delta_step = (delta_end - delta_start)/delta_num
+    tpr95_delta_min = sys.float_info.max
+    tpr95_delta_max = sys.float_info.min
+    scores_in_count = np.float(len(scores_in))
+    scores_out_count = np.float(len(scores_out))
+    tpr95_delta_count = 0
+    fpr = 0.0
+
+    for delta in tqdm(np.arange(delta_start, delta_end, delta_step), desc='Compute TPR95'):
+        tpr = np.sum(scores_in >= delta) / scores_in_count
+        error = np.sum(scores_out > delta) / scores_out_count
+        if tpr >= tpr95_min and tpr <= tpr95_max:
+            # print("delta:{}, tpr:{}, error:{}".format(delta, tpr, error))
+            tpr95_delta_min = min(tpr95_delta_min, delta)
+            tpr95_delta_max = max(tpr95_delta_max, delta)
+            fpr += error
+            tpr95_delta_count += 1
+    fpr = fpr/tpr95_delta_count
+    print("fpr:{}, tpr95_delta_count:{}, tpr95_delta_min:{}, tpr95_delta_max:{}".format(
+        fpr, tpr95_delta_count, tpr95_delta_min, tpr95_delta_max))
+    return fpr, tpr95_delta_count, tpr95_delta_min, tpr95_delta_max
+    
+
+def tpr95(base_file_in, base_file_out, odin_file_in, odin_file_out):
+    """
+    calculate the falsepositive error when tpr is 95%
+    """
+    # calculate baseline
+    base_in = np.loadtxt(base_file_in, delimiter=',')
+    base_out = np.loadtxt(base_file_out, delimiter=',')
+
+    fpr_base, tpr95_delta_count, tpr95_delta_min, tpr95_delta_max = compute_tpr95(
+        scores_in=base_in[:, 2],
+        scores_out=base_out[:, 2],
+        delta_start=0.01,
+        delta_end=1)
+
+    # calculate ODIN algorithm
+    odin_in = np.loadtxt(odin_file_in, delimiter=',')
+    odin_out = np.loadtxt(odin_file_out, delimiter=',')
+
+    fpr_odin, tpr95_delta_count, tpr95_delta_min, tpr95_delta_max = compute_tpr95(
+        scores_in=odin_in[:, 2],
+        scores_out=odin_out[:, 2],
+        delta_start=0.01,
+        delta_end=0.2)
+
+    return fpr_base, fpr_odin
