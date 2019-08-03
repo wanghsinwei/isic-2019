@@ -47,7 +47,6 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
 
         # In-distribution data
         df_in = pd.read_csv(os.path.join(pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
-        df_in = df_in[:10]
         df_in['path'] = df_in.apply(lambda row : os.path.join(derm_image_folder, row['image']+'.jpg'), axis=1)
         generator_in = ImageIterator(
                 image_paths=df_in['path'].tolist(),
@@ -61,7 +60,6 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 data_format=image_data_format)
         # Out-distribution data
         df_out = pd.read_csv(os.path.join(out_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
-        df_out = df_out[:10]
         df_out['path'] = df_out.apply(lambda row : os.path.join(out_dist_image_folder, row['image']+'.jpg'), axis=1)
         generator_out = ImageIterator(
                 image_paths=df_out['path'].tolist(),
