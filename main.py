@@ -101,7 +101,7 @@ def main():
         compute_odin_softmax_scores(pred_result_folder=pred_result_folder, derm_image_folder=derm_image_folder,
                                     out_dist_pred_result_folder=out_dist_pred_result_folder, out_dist_image_folder=out_dist_image_folder,
                                     saved_model_folder=saved_model_folder,
-                                    num_classes=known_category_num)
+                                    num_classes=known_category_num, batch_size=batch_size)
 
     # Shutdown
     if args.autoshutdown:

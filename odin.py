@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 import numpy as np
 import pandas as pd
 from typing import NamedTuple
@@ -12,7 +13,7 @@ from keras_numpy_backend import softmax
 from lesion_classifier import LesionClassifier
 from tqdm import tqdm, trange
 
-def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_pred_result_folder, out_dist_image_folder, saved_model_folder, num_classes):
+def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_pred_result_folder, out_dist_image_folder, saved_model_folder, num_classes, batch_size):
     ModelAttr = NamedTuple('ModelAttr', [('model_name', str), ('postfix', str)])
     # model_names = ['DenseNet201', 'Xception', 'ResNeXt50']
     # postfixes = ['best_balanced_acc', 'best_loss', 'latest']
@@ -55,14 +56,11 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 labels=None,
                 augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(model_param_map[modelattr.model_name].input_size),
                 preprocessing_function=model_param_map[modelattr.model_name].preprocessing_func,
-                batch_size=1,
+                batch_size=batch_size,
                 shuffle=False,
                 rescale=None,
-                pregen_augmented_images=False,
+                pregen_augmented_images=True,
                 data_format=image_data_format)
-        images_in = []
-        for i in trange(df_in.shape[0], desc='In-distribution Images'):
-            images_in.append(next(generator_in))
 
         # Out-distribution data
         df_out = pd.read_csv(os.path.join(out_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
@@ -72,14 +70,11 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 labels=None,
                 augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(model_param_map[modelattr.model_name].input_size),
                 preprocessing_function=model_param_map[modelattr.model_name].preprocessing_func,
-                batch_size=1,
+                batch_size=batch_size,
                 shuffle=False,
                 rescale=None,
-                pregen_augmented_images=False,
+                pregen_augmented_images=True,
                 data_format=image_data_format)
-        images_out = []
-        for i in trange(df_out.shape[0], desc='Out-distribution Images'):
-            images_out.append(next(generator_out))
 
         for odinparam in (OdinParam(x, y) for x in temperatures for y in magnitudes):
             for dist in distributions:
@@ -91,10 +86,10 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
 
                 if dist == 'In':
                     df = df_in
-                    images = images_in
+                    generator = generator_in
                 else:
                     df = df_out
-                    images = images_out
+                    generator = generator_out
 
                 print("\n===== Temperature: {}, Magnitude: {}, {}-Distribution =====".format(odinparam.temperature, odinparam.magnitude, dist))
                 softmax_score_folder = os.path.join(softmax_score_root_folder, "{}_{}".format(odinparam.temperature, odinparam.magnitude))
@@ -123,10 +118,12 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 # https://keras.io/getting-started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer
                 get_dense_pred_layer_output = K.function(model.inputs + [K.learning_phase()], [dense_pred_layer_output])
 
+                steps = math.ceil(df.shape[0] / batch_size)
+                generator.reset()
                 f = open(os.path.join(softmax_score_folder, "{}_{}_ODIN_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w')
-                for image in tqdm(images, desc="{}-Distribution Softmax Scores".format(dist)):
-                    perturbations = compute_perturbations([image, learning_phase])[0]
-
+                for _ in trange(steps):
+                    images = next(generator)
+                    perturbations = compute_perturbations([images, learning_phase])[0]
                     # Get sign of perturbations
                     perturbations = np.sign(perturbations)
                     
@@ -136,16 +133,16 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                     if need_norm_perturbations:
                         perturbations = norm_perturbations(perturbations, image_data_format)
                     
-                    # Add perturbations to image
-                    perturbative_image = image - odinparam.magnitude * perturbations
+                    # Add perturbations to images
+                    perturbative_images = images - odinparam.magnitude * perturbations
                     
                     # Calculate the confidence after adding perturbations
-                    dense_pred_output = get_dense_pred_layer_output([perturbative_image, learning_phase])[0]
-                    dense_pred_output = dense_pred_output / odinparam.temperature
-                    softmax_probs = softmax(dense_pred_output)
-                    softmax_score = np.max(softmax_probs)
-
-                    f.write("{}, {}, {}\n".format(odinparam.temperature, odinparam.magnitude, softmax_score))
+                    dense_pred_outputs = get_dense_pred_layer_output([perturbative_images, learning_phase])[0]
+                    dense_pred_outputs = dense_pred_outputs / odinparam.temperature
+                    softmax_probs = softmax(dense_pred_outputs)
+                    softmax_scores = np.max(softmax_probs, axis=-1)
+                    for s in softmax_scores:
+                        f.write("{}, {}, {}\n".format(odinparam.temperature, odinparam.magnitude, s))
                 f.close()
                 f_done.write("{}\n".format(param_comb_id))
                 f_done.flush()
