@@ -17,6 +17,17 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
     model_names = ['DenseNet201', 'Xception', 'ResNeXt50']
     postfixes = ['best_balanced_acc', 'best_loss', 'latest']
     distributions = ['In', 'Out']
+
+    softmax_score_root_folder = 'softmax_scores'
+    os.makedirs(softmax_score_root_folder, exist_ok=True)
+    # This file is used for recording what parameter combinations have done.
+    progress_file = os.path.join(softmax_score_root_folder, 'Done.txt')
+    done_set = set()
+    if os.path.exists(progress_file):
+        with open(progress_file, 'r') as f:
+            done_set = set(line.rstrip('\n') for line in f)
+
+    f_done = open(progress_file, 'a')
     
     # ODIN parameters
     OdinParam = NamedTuple('OdinParam', [('temperature', int), ('magnitude', float)])
@@ -34,18 +45,26 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
         model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(num_classes)})
         need_norm_perturbations = (modelattr.model_name == 'DenseNet201' or modelattr.model_name == 'ResNeXt50')
 
-        for dist in distributions:
-            # Load predicted results
-            print("Processing {}-distribution images".format(dist))
-            if dist == 'In':
-                df = pd.read_csv(os.path.join(pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
-                df['path'] = df.apply(lambda row : os.path.join(derm_image_folder, row['image']+'.jpg'), axis=1)
-            else:
-                df = pd.read_csv(os.path.join(out_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
-                df['path'] = df.apply(lambda row : os.path.join(out_dist_image_folder, row['image']+'.jpg'), axis=1)
-            
-            generator = ImageIterator(
-                image_paths=df['path'].tolist(),
+        # In-distribution data
+        df_in = pd.read_csv(os.path.join(pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
+        df_in = df_in[:10]
+        df_in['path'] = df_in.apply(lambda row : os.path.join(derm_image_folder, row['image']+'.jpg'), axis=1)
+        generator_in = ImageIterator(
+                image_paths=df_in['path'].tolist(),
+                labels=None,
+                augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(model_param_map[modelattr.model_name].input_size),
+                preprocessing_function=model_param_map[modelattr.model_name].preprocessing_func,
+                batch_size=1,
+                shuffle=False,
+                rescale=None,
+                pregen_augmented_images=True,
+                data_format=image_data_format)
+        # Out-distribution data
+        df_out = pd.read_csv(os.path.join(out_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
+        df_out = df_out[:10]
+        df_out['path'] = df_out.apply(lambda row : os.path.join(out_dist_image_folder, row['image']+'.jpg'), axis=1)
+        generator_out = ImageIterator(
+                image_paths=df_out['path'].tolist(),
                 labels=None,
                 augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(model_param_map[modelattr.model_name].input_size),
                 preprocessing_function=model_param_map[modelattr.model_name].preprocessing_func,
@@ -55,9 +74,23 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 pregen_augmented_images=True,
                 data_format=image_data_format)
 
-            for odinparam in (OdinParam(x, y) for x in temperatures for y in magnitudes):
-                print("ODIN Temperature: {}, Magnitude: {}".format(odinparam.temperature, odinparam.magnitude))
-                softmax_score_folder = os.path.join('softmax_scores', "{}_{}".format(odinparam.temperature, odinparam.magnitude))
+        for odinparam in (OdinParam(x, y) for x in temperatures for y in magnitudes):
+            for dist in distributions:
+                # Skip if the parameter combination has done
+                param_comb_id = "{}_{}, {}, {}, {}".format(modelattr.model_name, modelattr.postfix, dist, odinparam.temperature, odinparam.magnitude)
+                if param_comb_id in done_set:
+                    print('Skip ', param_comb_id)
+                    continue
+
+                if dist == 'In':
+                    df = df_in
+                    generator = generator_in
+                else:
+                    df = df_out
+                    generator = generator_out
+
+                print("[{}-Distribution] ODIN Temperature: {}, Magnitude: {}".format(dist, odinparam.temperature, odinparam.magnitude))
+                softmax_score_folder = os.path.join(softmax_score_root_folder, "{}_{}".format(odinparam.temperature, odinparam.magnitude))
                 os.makedirs(softmax_score_folder, exist_ok=True)
 
                 # Calculating the confidence of the output, no perturbation added here, no temperature scaling used
@@ -109,8 +142,11 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
 
                     f.write("{}, {}, {}\n".format(odinparam.temperature, odinparam.magnitude, softmax_score))
                 f.close()
+                f_done.write("{}\n".format(param_comb_id))
+                f_done.flush()
         del model
         K.clear_session()
+    f_done.close()
 
 def norm_perturbations(x, image_data_format):
     std = [0.2422, 0.2235, 0.2315]
