@@ -60,6 +60,13 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 softmax_score_folder = os.path.join('softmax_scores', "{}_{}".format(odinparam.temperature, odinparam.magnitude))
                 os.makedirs(softmax_score_folder, exist_ok=True)
 
+                # Calculating the confidence of the output, no perturbation added here, no temperature scaling used
+                with open(os.path.join(softmax_score_folder, "{}_{}_Base_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w') as f:
+                    for _, row in df.iterrows():
+                        softmax_probs = row[1:9]
+                        softmax_score = np.max(softmax_probs)
+                        f.write("{}, {}, {}\n".format(odinparam.temperature, odinparam.magnitude, softmax_score))
+
                 ### Define Keras Functions
                 # Compute loss based on model's outputs of last two layers and temperature scaling
                 dense_pred_layer_output = model.get_layer('dense_pred').output
@@ -75,19 +82,13 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
 
                 # https://keras.io/getting-started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer
                 get_dense_pred_layer_output = K.function(model.inputs + [K.learning_phase()], [dense_pred_layer_output])
-            
-                # Calculating the confidence of the output, no perturbation added here, no temperature scaling used
-                with open(os.path.join(softmax_score_folder, "{}_{}_Base_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w') as f:
-                    for _, row in df.iterrows():
-                        softmax_probs = row[1:9]
-                        softmax_score = np.max(softmax_probs)
-                        f.write("{}, {}, {}\n".format(odinparam.temperature, odinparam.magnitude, softmax_score))
 
                 generator.reset()
                 f = open(os.path.join(softmax_score_folder, "{}_{}_ODIN_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w')
                 for _ in trange(df.shape[0]):
                     image = next(generator)
                     perturbations = compute_perturbations([image, learning_phase])[0]
+
                     # Get sign of perturbations
                     perturbations = np.sign(perturbations)
                     
@@ -95,9 +96,7 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                     # https://github.com/facebookresearch/odin/issues/5
                     # Perturbations divided by ISIC Training Set STD
                     if need_norm_perturbations:
-                        perturbations[0][0] = perturbations[0][0] / 0.2422
-                        perturbations[0][1] = perturbations[0][1] / 0.2235
-                        perturbations[0][2] = perturbations[0][2] / 0.2315
+                        perturbations = norm_perturbations(perturbations, image_data_format)
                     
                     # Add perturbations to image
                     perturbative_image = image - odinparam.magnitude * perturbations
@@ -113,6 +112,23 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
         del model
         K.clear_session()
 
+def norm_perturbations(x, image_data_format):
+    std = [0.2422, 0.2235, 0.2315]
+
+    if image_data_format == 'channels_first':
+        if x.ndim == 3:
+            x[0, :, :] /= std[0]
+            x[1, :, :] /= std[1]
+            x[2, :, :] /= std[2]
+        else:
+            x[:, 0, :, :] /= std[0]
+            x[:, 1, :, :] /= std[1]
+            x[:, 2, :, :] /= std[2]
+    else:
+        x[..., 0] /= std[0]
+        x[..., 1] /= std[1]
+        x[..., 2] /= std[2]
+    return x
 
 def compute_tpr95(scores_in, scores_out, delta_start, delta_end, delta_num=100000):
     tpr95_min = 0.9495
