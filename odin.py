@@ -11,7 +11,7 @@ from image_iterator import ImageIterator
 from metrics import balanced_accuracy
 from keras_numpy_backend import softmax
 from lesion_classifier import LesionClassifier
-from tqdm import tqdm, trange
+from tqdm import trange
 
 ModelAttr = NamedTuple('ModelAttr', [('model_name', str), ('postfix', str)])
 OdinParam = NamedTuple('OdinParam', [('temperature', int), ('magnitude', float)])
@@ -103,11 +103,13 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                         f.write("{}, {}, {}\n".format(odinparam.temperature, odinparam.magnitude, softmax_score))
 
                 ### Define Keras Functions
-                # Compute loss based on model's outputs of last two layers and temperature scaling
+                # Compute loss based on the second last layer's output and temperature scaling
                 dense_pred_layer_output = model.get_layer('dense_pred').output
                 scaled_dense_pred_output = dense_pred_layer_output / odinparam.temperature
-                label_tensor = K.one_hot(K.argmax(dense_pred_layer_output), num_classes)
-                loss = K.categorical_crossentropy(label_tensor, K.softmax(scaled_dense_pred_output))
+                label_tensor = K.one_hot(K.argmax(model.outputs), num_classes)
+                # ODIN implementation uses torch.nn.CrossEntropyLoss
+                # Keras will call tf.nn.softmax_cross_entropy_with_logits when from_logits is True
+                loss = K.categorical_crossentropy(label_tensor, scaled_dense_pred_output, from_logits=True)
 
                 # Compute gradient of loss with respect to inputs
                 grad_loss = K.gradients(loss, model.inputs)
