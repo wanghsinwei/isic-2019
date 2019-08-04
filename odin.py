@@ -29,8 +29,6 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
     if os.path.exists(progress_file):
         with open(progress_file, 'r') as f:
             done_set = set(line.rstrip('\n') for line in f)
-
-    f_done = open(progress_file, 'a')
     
     # ODIN parameters
     OdinParam = NamedTuple('OdinParam', [('temperature', int), ('magnitude', float)])
@@ -96,6 +94,7 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 os.makedirs(softmax_score_folder, exist_ok=True)
 
                 # Calculating the confidence of the output, no perturbation added here, no temperature scaling used
+                # Here just copy the original prediction results
                 with open(os.path.join(softmax_score_folder, "{}_{}_Base_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w') as f:
                     for _, row in df.iterrows():
                         softmax_probs = row[1:9]
@@ -144,11 +143,11 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                     for s in softmax_scores:
                         f.write("{}, {}, {}\n".format(odinparam.temperature, odinparam.magnitude, s))
                 f.close()
-                f_done.write("{}\n".format(param_comb_id))
-                f_done.flush()
+
+                with open(progress_file, 'a') as f_done:
+                    f_done.write("{}\n".format(param_comb_id))
         del model
         K.clear_session()
-    f_done.close()
 
 def norm_perturbations(x, image_data_format):
     std = [0.2422, 0.2235, 0.2315]
