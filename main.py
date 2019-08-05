@@ -1,7 +1,6 @@
 import argparse
 import os
 import datetime
-import tensorflow as tf
 from keras.models import load_model
 from keras import backend as K
 from keras.utils import np_utils
@@ -19,12 +18,11 @@ def main():
     parser.add_argument('--batchsize', type=int, help='Batch size (default: %(default)s)', default=32)
     parser.add_argument('--maxqueuesize', type=int, help='Maximum size for the generator queue (default: %(default)s)', default=10)
     parser.add_argument('--epoch', type=int, help='Number of epochs (default: %(default)s)', default=100)
-    parser.add_argument('--vanilla', dest='vanilla', action='store_true', help='Train Vanilla CNN')
-    parser.add_argument('--transfer', dest='transfer_models', nargs='*', help='Models for Transfer Learning')
+    parser.add_argument('--model', dest='models', nargs='*', choices=['Vanilla', 'DenseNet201', 'Xception', 'ResNeXt50', 'NASNetLarge', 'InceptionResNetV2'], help='Models')
     parser.add_argument('--autoshutdown', dest='autoshutdown', action='store_true', help='Automatically shutdown the computer after everything is done')
-    parser.add_argument('--skiptraining', dest='skiptraining', action='store_true', help='Skip training processes')
-    parser.add_argument('--skippredict', dest='skippredict', action='store_true', help='Skip predicting validation set')
-    parser.add_argument('--skipodin', dest='skipodin', action='store_true', help='Skip computing ODIN softmax scores')
+    parser.add_argument('--training', dest='training', action='store_true', help='Train models')
+    parser.add_argument('--predictval', dest='predictval', action='store_true', help='Predict validation set')
+    parser.add_argument('--odin', dest='odin', action='store_true', help='Computing Baseline and ODIN softmax scores')
     args = parser.parse_args()
     print(args)
 
@@ -56,27 +54,29 @@ def main():
     models_to_predict_val = []
 
     # Train Vanilla CNN
-    if args.vanilla:
+    if args.models is not None and 'Vanilla' in args.models:
         input_size_vanilla = (224, 224)
-        if not args.skiptraining:
+        if args.training:
             train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num, input_size_vanilla)
         models_to_predict_val.append({'model_name': 'Vanilla',
                                       'input_size': input_size_vanilla,
                                       'preprocessing_function': VanillaClassifier.preprocess_input})
     
     # Train models by Transfer Learning
-    if args.transfer_models:
+    if args.models is not None and len(args.models) > 1:
+        transfer_models = args.models.copy()
+        transfer_models.remove('Vanilla')
         model_param_map = get_transfer_model_param_map()
-        base_model_params = [model_param_map[x] for x in args.transfer_models]
-        if not args.skiptraining:
+        base_model_params = [model_param_map[x] for x in transfer_models]
+        if args.training:
             train_transfer_learning(base_model_params, df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num)
         for base_model_param in base_model_params:
             models_to_predict_val.append({'model_name': base_model_param.class_name,
-                                        'input_size': base_model_param.input_size,
-                                        'preprocessing_function': base_model_param.preprocessing_func})
+                                          'input_size': base_model_param.input_size,
+                                          'preprocessing_function': base_model_param.preprocessing_func})
 
     # Predict validation set
-    if not args.skippredict:
+    if args.predictval:
         workers = os.cpu_count()
         postfixes = ['best_balanced_acc', 'best_loss', 'latest']
         for postfix in postfixes:
@@ -98,7 +98,7 @@ def main():
                     print("\"{}\" doesn't exist".format(model_filepath))
 
     # Compute Baseline and ODIN Softmax Scores
-    if not args.skipodin:
+    if args.odin:
         compute_baseline_softmax_scores(pred_result_folder=pred_result_folder,
                                         out_dist_pred_result_folder=out_dist_pred_result_folder,
                                         softmax_score_folder=softmax_score_folder)

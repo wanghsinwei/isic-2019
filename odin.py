@@ -21,6 +21,7 @@ def compute_baseline_softmax_scores(pred_result_folder, out_dist_pred_result_fol
     Calculating the base confidence of the output, no perturbation added here, no temperature scaling used.
     Directly copy the original prediction results.
     """
+    print('Begin to compute baseline softmax scores')
     softmax_score_baseline_folder = os.path.join(softmax_score_folder, 'Base')
     os.makedirs(softmax_score_baseline_folder, exist_ok=True)
     model_names = ['DenseNet201', 'Xception', 'ResNeXt50']
@@ -40,9 +41,9 @@ def compute_baseline_softmax_scores(pred_result_folder, out_dist_pred_result_fol
                     f.write("{}\n".format(softmax_score))
 
 def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_pred_result_folder, out_dist_image_folder, saved_model_folder, softmax_score_folder, num_classes, batch_size):
-    # model_names = ['DenseNet201', 'Xception', 'ResNeXt50']
+    print('Begin to compute ODIN softmax scores')
+    model_names = ['DenseNet201', 'Xception', 'ResNeXt50']
     # postfixes = ['best_balanced_acc', 'best_loss', 'latest']
-    model_names = ['DenseNet201']
     postfixes = ['best_balanced_acc']
     distributions = ['In', 'Out']
 
