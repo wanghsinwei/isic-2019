@@ -2,7 +2,6 @@ import argparse
 import os
 import datetime
 import tensorflow as tf
-import keras
 from keras.models import load_model
 from keras import backend as K
 from keras.utils import np_utils
@@ -12,7 +11,7 @@ from transfer_learn_classifier import TransferLearnClassifier
 from metrics import balanced_accuracy
 from base_model_param import get_transfer_model_param_map
 from lesion_classifier import LesionClassifier
-from odin import compute_odin_softmax_scores
+from odin import compute_baseline_softmax_scores, compute_odin_softmax_scores
 
 def main():
     parser = argparse.ArgumentParser(description='ISIC-2019 Skin Lesion Classifiers')
@@ -35,9 +34,10 @@ def main():
 
     data_folder = args.data
     pred_result_folder = 'predict_results'
-    if not os.path.exists(pred_result_folder):
-        os.makedirs(pred_result_folder)
+    os.makedirs(pred_result_folder, exist_ok=True)
     saved_model_folder = 'saved_models'
+    softmax_score_folder = 'softmax_scores'
+    os.makedirs(softmax_score_folder, exist_ok=True)
     batch_size = args.batchsize
     max_queue_size = args.maxqueuesize
     epoch_num = args.epoch
@@ -96,11 +96,15 @@ def main():
                 else:
                     print("\"{}\" doesn't exist".format(model_filepath))
 
-    # Compute ODIN Softmax Scores
+    # Compute Baseline and ODIN Softmax Scores
     if not args.skipodin:
+        compute_baseline_softmax_scores(pred_result_folder=pred_result_folder,
+                                        out_dist_pred_result_folder=out_dist_pred_result_folder,
+                                        softmax_score_folder=softmax_score_folder)
+                                        
         compute_odin_softmax_scores(pred_result_folder=pred_result_folder, derm_image_folder=derm_image_folder,
                                     out_dist_pred_result_folder=out_dist_pred_result_folder, out_dist_image_folder=out_dist_image_folder,
-                                    saved_model_folder=saved_model_folder,
+                                    saved_model_folder=saved_model_folder, softmax_score_folder=softmax_score_folder,
                                     num_classes=known_category_num, batch_size=batch_size)
 
     # Shutdown

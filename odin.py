@@ -16,17 +16,38 @@ from tqdm import trange
 ModelAttr = NamedTuple('ModelAttr', [('model_name', str), ('postfix', str)])
 OdinParam = NamedTuple('OdinParam', [('temperature', int), ('magnitude', float)])
 
-def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_pred_result_folder, out_dist_image_folder, saved_model_folder, num_classes, batch_size):
+def compute_baseline_softmax_scores(pred_result_folder, out_dist_pred_result_folder, softmax_score_folder):
+    """
+    Calculating the base confidence of the output, no perturbation added here, no temperature scaling used.
+    Directly copy the original prediction results.
+    """
+    softmax_score_baseline_folder = os.path.join(softmax_score_folder, 'Base')
+    os.makedirs(softmax_score_baseline_folder, exist_ok=True)
+    model_names = ['DenseNet201', 'Xception', 'ResNeXt50']
+    postfixes = ['best_balanced_acc', 'best_loss', 'latest']
+    distributions = ['In', 'Out']
+
+    for modelattr in (ModelAttr(x, y) for x in model_names for y in postfixes):
+        for dist in distributions:
+            df = {
+                'In': pd.read_csv(os.path.join(pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix))),
+                'Out': pd.read_csv(os.path.join(out_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
+            }
+            with open(os.path.join(softmax_score_baseline_folder, "{}_{}_Base_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w') as f:
+                for _, row in df[dist].iterrows():
+                    softmax_probs = row[1:9]
+                    softmax_score = np.max(softmax_probs)
+                    f.write("{}\n".format(softmax_score))
+
+def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_pred_result_folder, out_dist_image_folder, saved_model_folder, softmax_score_folder, num_classes, batch_size):
     # model_names = ['DenseNet201', 'Xception', 'ResNeXt50']
     # postfixes = ['best_balanced_acc', 'best_loss', 'latest']
     model_names = ['DenseNet201']
     postfixes = ['best_balanced_acc']
     distributions = ['In', 'Out']
 
-    softmax_score_root_folder = 'softmax_scores'
-    os.makedirs(softmax_score_root_folder, exist_ok=True)
     # This file is used for recording what parameter combinations were already computed.
-    progress_file = os.path.join(softmax_score_root_folder, 'Done.txt')
+    progress_file = os.path.join(softmax_score_folder, 'Done.txt')
     done_set = set()
     if os.path.exists(progress_file):
         with open(progress_file, 'r') as f:
@@ -41,17 +62,12 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
     learning_phase = 0 # 0 = test, 1 = train
 
     for modelattr in (ModelAttr(x, y) for x in model_names for y in postfixes):
-        # Load model
-        model_filepath = os.path.join(saved_model_folder, "{}_{}.hdf5".format(modelattr.model_name, modelattr.postfix))
-        print('Load model: ', model_filepath)
-        model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(num_classes)})
-        need_norm_perturbations = (modelattr.model_name == 'DenseNet201' or modelattr.model_name == 'ResNeXt50')
-
         # In-distribution data
-        df_in = pd.read_csv(os.path.join(pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
-        df_in['path'] = df_in.apply(lambda row : os.path.join(derm_image_folder, row['image']+'.jpg'), axis=1)
+        df = {}
+        df['In'] = pd.read_csv(os.path.join(pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
+        df['In']['path'] = df['In'].apply(lambda row : os.path.join(derm_image_folder, row['image']+'.jpg'), axis=1)
         generator_in = ImageIterator(
-                image_paths=df_in['path'].tolist(),
+                image_paths=df['In']['path'].tolist(),
                 labels=None,
                 augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(model_param_map[modelattr.model_name].input_size),
                 preprocessing_function=model_param_map[modelattr.model_name].preprocessing_func,
@@ -62,10 +78,10 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 data_format=image_data_format)
 
         # Out-distribution data
-        df_out = pd.read_csv(os.path.join(out_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
-        df_out['path'] = df_out.apply(lambda row : os.path.join(out_dist_image_folder, row['image']+'.jpg'), axis=1)
+        df['Out'] = pd.read_csv(os.path.join(out_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
+        df['Out']['path'] = df['Out'].apply(lambda row : os.path.join(out_dist_image_folder, row['image']+'.jpg'), axis=1)
         generator_out = ImageIterator(
-                image_paths=df_out['path'].tolist(),
+                image_paths=df['Out']['path'].tolist(),
                 labels=None,
                 augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(model_param_map[modelattr.model_name].input_size),
                 preprocessing_function=model_param_map[modelattr.model_name].preprocessing_func,
@@ -75,6 +91,12 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 pregen_augmented_images=True,
                 data_format=image_data_format)
 
+        # Load model
+        model_filepath = os.path.join(saved_model_folder, "{}_{}.hdf5".format(modelattr.model_name, modelattr.postfix))
+        print('Load model: ', model_filepath)
+        model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(num_classes)})
+        need_norm_perturbations = (modelattr.model_name == 'DenseNet201' or modelattr.model_name == 'ResNeXt50')
+
         for odinparam in (OdinParam(x, y) for x in temperatures for y in magnitudes):
             for dist in distributions:
                 # Skip if the parameter combination has done
@@ -83,24 +105,11 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                     print('Skip ', param_comb_id)
                     continue
 
-                if dist == 'In':
-                    df = df_in
-                    generator = generator_in
-                else:
-                    df = df_out
-                    generator = generator_out
+                generator = generator_in if dist == 'In' else generator_out
 
                 print("\n===== Temperature: {}, Magnitude: {}, {}-Distribution =====".format(odinparam.temperature, odinparam.magnitude, dist))
-                softmax_score_folder = os.path.join(softmax_score_root_folder, "{}_{}".format(odinparam.temperature, odinparam.magnitude))
-                os.makedirs(softmax_score_folder, exist_ok=True)
-
-                # Calculating the confidence of the output, no perturbation added here, no temperature scaling used
-                # Here just copy the original prediction results
-                with open(os.path.join(softmax_score_folder, "{}_{}_Base_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w') as f:
-                    for _, row in df.iterrows():
-                        softmax_probs = row[1:9]
-                        softmax_score = np.max(softmax_probs)
-                        f.write("{}, {}, {}\n".format(odinparam.temperature, odinparam.magnitude, softmax_score))
+                softmax_score_sub_folder = os.path.join(softmax_score_folder, "{}_{}".format(odinparam.temperature, odinparam.magnitude))
+                os.makedirs(softmax_score_sub_folder, exist_ok=True)
 
                 ### Define Keras Functions
                 # Compute loss based on the second last layer's output and temperature scaling
@@ -120,9 +129,9 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 # https://keras.io/getting-started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer
                 get_dense_pred_layer_output = K.function(model.inputs + [K.learning_phase()], [dense_pred_layer_output])
 
-                steps = math.ceil(df.shape[0] / batch_size)
+                steps = math.ceil(df[dist].shape[0] / batch_size)
                 generator.reset()
-                f = open(os.path.join(softmax_score_folder, "{}_{}_ODIN_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w')
+                f = open(os.path.join(softmax_score_sub_folder, "{}_{}_ODIN_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w')
                 for _ in trange(steps):
                     images = next(generator)
                     perturbations = compute_perturbations([images, learning_phase])[0]
@@ -144,7 +153,7 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                     softmax_probs = softmax(dense_pred_outputs)
                     softmax_scores = np.max(softmax_probs, axis=-1)
                     for s in softmax_scores:
-                        f.write("{}, {}, {}\n".format(odinparam.temperature, odinparam.magnitude, s))
+                        f.write("{}\n".format(s))
                 f.close()
 
                 with open(progress_file, 'a') as f_done:
@@ -172,10 +181,13 @@ def norm_perturbations(x, image_data_format):
     return x
 
 
-def compute_tpr95(scores_in, scores_out, delta_start, delta_end, delta_num=100000):
+def compute_tpr95(in_dist_file, out_dist_file, delta_start, delta_end, delta_num=100000):
     """
     calculate the false positive rate (FPR) when true positive rate (TPR) is 95%
     """
+    scores_in = np.loadtxt(in_dist_file)
+    scores_out = np.loadtxt(out_dist_file)
+
     delta_step = (delta_end - delta_start)/delta_num
     delta_best = None
     scores_in_count = np.float(len(scores_in))
@@ -195,29 +207,3 @@ def compute_tpr95(scores_in, scores_out, delta_start, delta_end, delta_num=10000
             tpr95_count += 1
     fpr_at_tpr95 = fpr_sum / tpr95_count
     return fpr_at_tpr95, delta_best
-
-
-def tpr95_base(in_dist_file, out_dist_file):
-    """ Calculate baseline """
-    base_in = np.loadtxt(in_dist_file, delimiter=',')
-    base_out = np.loadtxt(out_dist_file, delimiter=',')
-
-    fpr, delta = compute_tpr95(
-        scores_in=base_in[:, 2],
-        scores_out=base_out[:, 2],
-        delta_start=0.01,
-        delta_end=1)
-    return fpr, delta
-
-
-def tpr95_odin(in_dist_file, out_dist_file):
-    """ Calculate ODIN method """
-    odin_in = np.loadtxt(in_dist_file, delimiter=',')
-    odin_out = np.loadtxt(out_dist_file, delimiter=',')
-
-    fpr, delta = compute_tpr95(
-        scores_in=odin_in[:, 2],
-        scores_out=odin_out[:, 2],
-        delta_start=0.1,
-        delta_end=0.2)
-    return fpr, delta
