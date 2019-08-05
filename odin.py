@@ -127,7 +127,7 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 compute_perturbations = K.function(model.inputs + [K.learning_phase()], grad_loss)
 
                 # https://keras.io/getting-started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer
-                get_dense_pred_layer_output = K.function(model.inputs + [K.learning_phase()], [dense_pred_layer_output])
+                get_scaled_dense_pred_output = K.function(model.inputs + [K.learning_phase()], [scaled_dense_pred_output])
 
                 steps = math.ceil(df[dist].shape[0] / batch_size)
                 generator.reset()
@@ -148,8 +148,7 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                     perturbative_images = images - odinparam.magnitude * perturbations
                     
                     # Calculate the confidence after adding perturbations
-                    dense_pred_outputs = get_dense_pred_layer_output([perturbative_images, learning_phase])[0]
-                    dense_pred_outputs = dense_pred_outputs / odinparam.temperature
+                    dense_pred_outputs = get_scaled_dense_pred_output([perturbative_images, learning_phase])[0]
                     softmax_probs = softmax(dense_pred_outputs)
                     softmax_scores = np.max(softmax_probs, axis=-1)
                     for s in softmax_scores:
