@@ -99,6 +99,24 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
         need_norm_perturbations = (modelattr.model_name == 'DenseNet201' or modelattr.model_name == 'ResNeXt50')
 
         for odinparam in (OdinParam(x, y) for x in temperatures for y in magnitudes):
+            ### Define Keras Functions
+            # Compute loss based on the second last layer's output and temperature scaling
+            dense_pred_layer_output = model.get_layer('dense_pred').output
+            scaled_dense_pred_output = dense_pred_layer_output / odinparam.temperature
+            label_tensor = K.one_hot(K.argmax(model.outputs), num_classes)
+            # ODIN implementation uses torch.nn.CrossEntropyLoss
+            # Keras will call tf.nn.softmax_cross_entropy_with_logits when from_logits is True
+            loss = K.categorical_crossentropy(label_tensor, scaled_dense_pred_output, from_logits=True)
+
+            # Compute gradient of loss with respect to inputs
+            grad_loss = K.gradients(loss, model.inputs)
+
+            # The learning phase flag is a bool tensor (0 = test, 1 = train)
+            compute_perturbations = K.function(model.inputs + [K.learning_phase()], grad_loss)
+
+            # https://keras.io/getting-started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer
+            get_scaled_dense_pred_output = K.function(model.inputs + [K.learning_phase()], [scaled_dense_pred_output])
+
             for dist in distributions:
                 # Skip if the parameter combination has done
                 param_comb_id = "{}_{}, {}, {}, {}".format(modelattr.model_name, modelattr.postfix, dist, odinparam.temperature, odinparam.magnitude)
@@ -111,24 +129,6 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
                 print("\n===== Temperature: {}, Magnitude: {}, {}-Distribution =====".format(odinparam.temperature, odinparam.magnitude, dist))
                 softmax_score_sub_folder = os.path.join(softmax_score_folder, "{}_{}".format(odinparam.temperature, odinparam.magnitude))
                 os.makedirs(softmax_score_sub_folder, exist_ok=True)
-
-                ### Define Keras Functions
-                # Compute loss based on the second last layer's output and temperature scaling
-                dense_pred_layer_output = model.get_layer('dense_pred').output
-                scaled_dense_pred_output = dense_pred_layer_output / odinparam.temperature
-                label_tensor = K.one_hot(K.argmax(model.outputs), num_classes)
-                # ODIN implementation uses torch.nn.CrossEntropyLoss
-                # Keras will call tf.nn.softmax_cross_entropy_with_logits when from_logits is True
-                loss = K.categorical_crossentropy(label_tensor, scaled_dense_pred_output, from_logits=True)
-
-                # Compute gradient of loss with respect to inputs
-                grad_loss = K.gradients(loss, model.inputs)
-
-                # The learning phase flag is a bool tensor (0 = test, 1 = train)
-                compute_perturbations = K.function(model.inputs + [K.learning_phase()], grad_loss)
-
-                # https://keras.io/getting-started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer
-                get_scaled_dense_pred_output = K.function(model.inputs + [K.learning_phase()], [scaled_dense_pred_output])
 
                 steps = math.ceil(df[dist].shape[0] / batch_size)
                 generator.reset()
