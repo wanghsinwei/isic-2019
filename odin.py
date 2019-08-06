@@ -14,7 +14,6 @@ from lesion_classifier import LesionClassifier
 from tqdm import trange
 
 ModelAttr = NamedTuple('ModelAttr', [('model_name', str), ('postfix', str)])
-OdinParam = NamedTuple('OdinParam', [('temperature', int), ('magnitude', float)])
 
 def compute_baseline_softmax_scores(pred_result_folder, out_dist_pred_result_folder, softmax_score_folder):
     """
@@ -98,11 +97,11 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
         model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(num_classes)})
         need_norm_perturbations = (modelattr.model_name == 'DenseNet201' or modelattr.model_name == 'ResNeXt50')
 
-        for odinparam in (OdinParam(x, y) for x in temperatures for y in magnitudes):
+        for temperature in temperatures:
             ### Define Keras Functions
             # Compute loss based on the second last layer's output and temperature scaling
             dense_pred_layer_output = model.get_layer('dense_pred').output
-            scaled_dense_pred_output = dense_pred_layer_output / odinparam.temperature
+            scaled_dense_pred_output = dense_pred_layer_output / temperature
             label_tensor = K.one_hot(K.argmax(model.outputs), num_classes)
             # ODIN implementation uses torch.nn.CrossEntropyLoss
             # Keras will call tf.nn.softmax_cross_entropy_with_logits when from_logits is True
@@ -117,47 +116,48 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
             # https://keras.io/getting-started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer
             get_scaled_dense_pred_output = K.function(model.inputs + [K.learning_phase()], [scaled_dense_pred_output])
 
-            for dist in distributions:
-                # Skip if the parameter combination has done
-                param_comb_id = "{}_{}, {}, {}, {}".format(modelattr.model_name, modelattr.postfix, dist, odinparam.temperature, odinparam.magnitude)
-                if param_comb_id in done_set:
-                    print('Skip ', param_comb_id)
-                    continue
+            for magnitude in magnitudes:
+                for dist in distributions:
+                    # Skip if the parameter combination has done
+                    param_comb_id = "{}_{}, {}, {}, {}".format(modelattr.model_name, modelattr.postfix, dist, temperature, magnitude)
+                    if param_comb_id in done_set:
+                        print('Skip ', param_comb_id)
+                        continue
 
-                generator = generator_in if dist == 'In' else generator_out
+                    generator = generator_in if dist == 'In' else generator_out
 
-                print("\n===== Temperature: {}, Magnitude: {}, {}-Distribution =====".format(odinparam.temperature, odinparam.magnitude, dist))
-                softmax_score_sub_folder = os.path.join(softmax_score_folder, "{}_{}".format(odinparam.temperature, odinparam.magnitude))
-                os.makedirs(softmax_score_sub_folder, exist_ok=True)
+                    print("\n===== Temperature: {}, Magnitude: {}, {}-Distribution =====".format(temperature, magnitude, dist))
+                    softmax_score_sub_folder = os.path.join(softmax_score_folder, "{}_{}".format(temperature, magnitude))
+                    os.makedirs(softmax_score_sub_folder, exist_ok=True)
 
-                steps = math.ceil(df[dist].shape[0] / batch_size)
-                generator.reset()
-                f = open(os.path.join(softmax_score_sub_folder, "{}_{}_ODIN_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w')
-                for _ in trange(steps):
-                    images = next(generator)
-                    perturbations = compute_perturbations([images, learning_phase])[0]
-                    # Get sign of perturbations
-                    perturbations = np.sign(perturbations)
-                    
-                    # Normalize the perturbations to the same space of image
-                    # https://github.com/facebookresearch/odin/issues/5
-                    # Perturbations divided by ISIC Training Set STD
-                    if need_norm_perturbations:
-                        perturbations = norm_perturbations(perturbations, image_data_format)
-                    
-                    # Add perturbations to images
-                    perturbative_images = images - odinparam.magnitude * perturbations
-                    
-                    # Calculate the confidence after adding perturbations
-                    dense_pred_outputs = get_scaled_dense_pred_output([perturbative_images, learning_phase])[0]
-                    softmax_probs = softmax(dense_pred_outputs)
-                    softmax_scores = np.max(softmax_probs, axis=-1)
-                    for s in softmax_scores:
-                        f.write("{}\n".format(s))
-                f.close()
+                    steps = math.ceil(df[dist].shape[0] / batch_size)
+                    generator.reset()
+                    f = open(os.path.join(softmax_score_sub_folder, "{}_{}_ODIN_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w')
+                    for _ in trange(steps):
+                        images = next(generator)
+                        perturbations = compute_perturbations([images, learning_phase])[0]
+                        # Get sign of perturbations
+                        perturbations = np.sign(perturbations)
+                        
+                        # Normalize the perturbations to the same space of image
+                        # https://github.com/facebookresearch/odin/issues/5
+                        # Perturbations divided by ISIC Training Set STD
+                        if need_norm_perturbations:
+                            perturbations = norm_perturbations(perturbations, image_data_format)
+                        
+                        # Add perturbations to images
+                        perturbative_images = images - magnitude * perturbations
+                        
+                        # Calculate the confidence after adding perturbations
+                        dense_pred_outputs = get_scaled_dense_pred_output([perturbative_images, learning_phase])[0]
+                        softmax_probs = softmax(dense_pred_outputs)
+                        softmax_scores = np.max(softmax_probs, axis=-1)
+                        for s in softmax_scores:
+                            f.write("{}\n".format(s))
+                    f.close()
 
-                with open(progress_file, 'a') as f_done:
-                    f_done.write("{}\n".format(param_comb_id))
+                    with open(progress_file, 'a') as f_done:
+                        f_done.write("{}\n".format(param_comb_id))
         del model
         K.clear_session()
 
