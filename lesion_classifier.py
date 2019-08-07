@@ -102,7 +102,7 @@ class LesionClassifier():
         intermediate_layer_model = Model(inputs=model.input,
                                          outputs=model.get_layer('dense_pred').output)
         logits = intermediate_layer_model.predict_generator(generator, verbose=1, workers=workers)
-        softmax_probs = softmax(logits)
+        softmax_probs = softmax(logits).astype(float) # explicitly convert softmax values to floating point because 0 and 1 are invalid, but 0.0 and 1.0 are valid
 
         # logits
         df_logit = pd.DataFrame(logits, columns=category_names)
