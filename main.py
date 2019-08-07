@@ -91,7 +91,8 @@ def main():
                                                        preprocessing_function=m['preprocessing_function'],
                                                        batch_size=batch_size,
                                                        workers=workers,
-                                                       save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], postfix))
+                                                       softmax_save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], postfix),
+                                                       logit_save_file_name=os.path.join(pred_result_folder, "{}_{}_logit.csv").format(m['model_name'], postfix))
                     del model
                     K.clear_session()
                 else:

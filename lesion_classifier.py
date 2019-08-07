@@ -7,6 +7,8 @@ from Augmentor.Operations import CropPercentageRange
 from image_iterator import ImageIterator
 from keras.optimizers import Adam
 from keras.callbacks import ModelCheckpoint, CSVLogger
+from keras.models import Model
+from keras_numpy_backend import softmax
 import keras.backend as K
 import tensorflow as tf
 
@@ -50,25 +52,6 @@ class LesionClassifier():
     @staticmethod
     def create_aug_pipeline_train(input_size):
         """Image Augmentation Pipeline for Training Set."""
-        
-        # p_train = Pipeline()
-        # # Resize the image to 1.25 times of the desired input size of the model
-        # resize_target_size = tuple(math.ceil(1.25*x) for x in input_size)
-        # p_train.resize(probability=1, width=resize_target_size[0], height=resize_target_size[1])
-        # # Random crop
-        # p_train.add_operation(CropPercentageRange(probability=1, min_percentage_area=0.8, max_percentage_area=1, centre=False))
-        # # Resize the image to the desired input size of the model
-        # p_train.resize(probability=1, width=input_size[0], height=input_size[1])
-        # # Rotate the image by either 90, 180, or 270 degrees randomly
-        # p_train.rotate_random_90(probability=0.5)
-        # # Flip the image along its vertical axis
-        # p_train.flip_top_bottom(probability=0.5)
-        # # Flip the image along its horizontal axis
-        # p_train.flip_left_right(probability=0.5)
-        # # Random change brightness of the image
-        # p_train.random_brightness(probability=0.5, min_factor=0.9, max_factor=1.1)
-        # # Random change saturation of the image
-        # p_train.random_color(probability=0.5, min_factor=0.9, max_factor=1.1)
 
         p_train = Pipeline()
         # Random crop
@@ -101,7 +84,7 @@ class LesionClassifier():
     @staticmethod
     def predict_dataframe(model, df, x_col='path', y_col='category', id_col='image', category_names=None,
                           augmentation_pipeline=None, preprocessing_function=None,
-                          batch_size=32, workers=1, save_file_name=None):
+                          batch_size=32, workers=1, softmax_save_file_name=None, logit_save_file_name=None):
         generator = ImageIterator(
             image_paths=df[x_col].tolist(),
             labels=None,
@@ -115,17 +98,31 @@ class LesionClassifier():
         )
 
         # Predict
-        predicted_vector = model.predict_generator(generator, verbose=1, workers=workers)
+        # https://keras.io/getting-started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer
+        intermediate_layer_model = Model(inputs=model.input,
+                                         outputs=model.get_layer('dense_pred').output)
+        logits = intermediate_layer_model.predict_generator(generator, verbose=1, workers=workers)
+        softmax_probs = softmax(logits)
 
-        # Save the predicted results as a csv file
-        df_pred = pd.DataFrame(predicted_vector, columns=category_names)
+        # logits
+        df_logit = pd.DataFrame(logits, columns=category_names)
         if y_col in df.columns:
-            df_pred[y_col] = df[y_col].to_numpy()
-        df_pred['pred_'+y_col] = np.argmax(predicted_vector, axis=1)
-        df_pred.insert(0, id_col, df[id_col].to_numpy())
-        if save_file_name is not None:
-            df_pred.to_csv(path_or_buf=save_file_name, index=False)
-        return df_pred
+            df_logit[y_col] = df[y_col].to_numpy()
+        df_logit['pred_'+y_col] = np.argmax(logits, axis=1)
+        df_logit.insert(0, id_col, df[id_col].to_numpy())
+        if logit_save_file_name is not None:
+            df_logit.to_csv(path_or_buf=logit_save_file_name, index=False)
+
+        # softmax probabilities
+        df_softmax = pd.DataFrame(softmax_probs, columns=category_names)
+        if y_col in df.columns:
+            df_softmax[y_col] = df[y_col].to_numpy()
+        df_softmax['pred_'+y_col] = np.argmax(softmax_probs, axis=1)
+        df_softmax.insert(0, id_col, df[id_col].to_numpy())
+        if softmax_save_file_name is not None:
+            df_softmax.to_csv(path_or_buf=softmax_save_file_name, index=False)
+
+        return df_softmax, df_logit
 
     def _create_image_generator(self):
         ### Training Image Generator
