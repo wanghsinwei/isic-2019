@@ -12,6 +12,7 @@ from metrics import balanced_accuracy
 from keras_numpy_backend import softmax
 from lesion_classifier import LesionClassifier
 from tqdm import trange
+from sklearn.metrics import roc_auc_score
 
 ModelAttr = NamedTuple('ModelAttr', [('model_name', str), ('postfix', str)])
 
@@ -28,11 +29,11 @@ def compute_baseline_softmax_scores(pred_result_folder, out_dist_pred_result_fol
     distributions = ['In', 'Out']
 
     for modelattr in (ModelAttr(x, y) for x in model_names for y in postfixes):
+        df = {
+            'In': pd.read_csv(os.path.join(pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix))),
+            'Out': pd.read_csv(os.path.join(out_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
+        }
         for dist in distributions:
-            df = {
-                'In': pd.read_csv(os.path.join(pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix))),
-                'Out': pd.read_csv(os.path.join(out_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
-            }
             with open(os.path.join(softmax_score_baseline_folder, "{}_{}_Base_{}.txt".format(modelattr.model_name, modelattr.postfix, dist)), 'w') as f:
                 for _, row in df[dist].iterrows():
                     softmax_probs = row[1:9]
@@ -222,3 +223,15 @@ def find_best_delta_at_tpr95(in_dist_file, out_dist_file, delta_start=None, delt
             tpr95_count += 1
     fpr_at_tpr95 = fpr_sum / tpr95_count
     return fpr_at_tpr95, delta_best
+
+def auroc(in_dist_file, out_dist_file):
+    """
+    Area Under the Receiver Operating Characteristic Curve (ROC AUC).
+    """
+    scores_in = np.loadtxt(in_dist_file)
+    scores_out = np.loadtxt(out_dist_file)
+
+    y_true = np.concatenate([np.repeat(1, scores_in.size), np.repeat(0, scores_out.size)])
+    y_score = np.concatenate([scores_in, scores_out])
+
+    return roc_auc_score(y_true, y_score)
