@@ -180,13 +180,29 @@ def norm_perturbations(x, image_data_format):
         x[..., 2] /= std[2]
     return x
 
+def get_tpr_and_fpr(scores_in, scores_out, delta):
+    tpr = np.sum(scores_in > delta) / np.float(len(scores_in))
+    fpr = np.sum(scores_out > delta) / np.float(len(scores_out))
+    return tpr, fpr
 
-def compute_tpr95(in_dist_file, out_dist_file, delta_start, delta_end, delta_num=100000):
+def find_best_delta_at_tpr95(in_dist_file, out_dist_file, delta_start=None, delta_end=None, delta_num=100000):
     """
     calculate the false positive rate (FPR) when true positive rate (TPR) is 95%
     """
     scores_in = np.loadtxt(in_dist_file)
     scores_out = np.loadtxt(out_dist_file)
+
+    if delta_start is None:
+        delta_start = sys.float_info.max
+        delta_start = np.min(scores_in, initial=delta_start)
+        delta_start = np.min(scores_out, initial=delta_start)
+
+    if delta_end is None:
+        delta_end = sys.float_info.min
+        delta_end = np.max(scores_in, initial=delta_end)
+        delta_end = np.max(scores_out, initial=delta_end)
+
+    # print("delta_start:{}, delta_end:{}".format(delta_start, delta_end))
 
     delta_step = (delta_end - delta_start)/delta_num
     delta_best = None
@@ -197,10 +213,9 @@ def compute_tpr95(in_dist_file, out_dist_file, delta_start, delta_end, delta_num
     fpr_sum = 0.0
 
     for delta in np.arange(delta_start, delta_end, delta_step):
-        tpr = np.sum(scores_in >= delta) / scores_in_count
+        tpr = np.sum(scores_in > delta) / scores_in_count
         if 0.9495 <= tpr <= 0.9505:
             fpr = np.sum(scores_out > delta) / scores_out_count
-            # print("delta:{}, tpr:{}, fpr:{}".format(delta, tpr, fpr))
             if fpr < fpr_min:
                 delta_best = delta  # The optimal delta is chosen to minimize the FPR at TPR 95%
             fpr_sum += fpr
