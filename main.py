@@ -42,8 +42,8 @@ def main():
 
     derm_image_folder = os.path.join(data_folder, 'ISIC_2019_Training_Input')
     ground_truth_file = os.path.join(data_folder, 'ISIC_2019_Training_GroundTruth.csv')
-    df_ground_truth, category_names = load_isic_data(derm_image_folder, ground_truth_file)
-    known_category_num = len(category_names)
+    df_ground_truth, known_category_names, unknown_category_names = load_isic_data(derm_image_folder, ground_truth_file)
+    known_category_num = len(known_category_names)
     df_train, df_val = train_validation_split(df_ground_truth)
     class_weight_dict, _ = compute_class_weight_dict(df_train)
 
@@ -77,6 +77,11 @@ def main():
 
     # Predict validation set
     if args.predictval:
+        # Save Ground Truth of validation set
+        val_ground_truth_file_path = os.path.join(pred_result_folder, 'Validation_Set_GroundTruth.csv')
+        df_val.drop(columns=['path', 'category']).to_csv(path_or_buf=val_ground_truth_file_path, index=False)
+        print("Save \"{}\"".format(val_ground_truth_file_path))
+
         workers = os.cpu_count()
         postfixes = ['best_balanced_acc', 'best_loss', 'latest']
         for postfix in postfixes:
@@ -86,7 +91,7 @@ def main():
                     print("===== Predict validation set using \"{}_{}\" model =====".format(m['model_name'], postfix))
                     model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(known_category_num)})
                     LesionClassifier.predict_dataframe(model=model, df=df_val,
-                                                       category_names=category_names,
+                                                       category_names=known_category_names,
                                                        augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(m['input_size']),
                                                        preprocessing_function=m['preprocessing_function'],
                                                        batch_size=batch_size,
@@ -100,11 +105,11 @@ def main():
 
     # Compute Baseline and ODIN Softmax Scores
     if args.odin:
-        compute_baseline_softmax_scores(pred_result_folder=pred_result_folder,
+        compute_baseline_softmax_scores(in_dist_pred_result_folder=pred_result_folder,
                                         out_dist_pred_result_folder=out_dist_pred_result_folder,
                                         softmax_score_folder=softmax_score_folder)
                                         
-        compute_odin_softmax_scores(pred_result_folder=pred_result_folder, derm_image_folder=derm_image_folder,
+        compute_odin_softmax_scores(in_dist_pred_result_folder=pred_result_folder, in_dist_image_folder=derm_image_folder,
                                     out_dist_pred_result_folder=out_dist_pred_result_folder, out_dist_image_folder=out_dist_image_folder,
                                     saved_model_folder=saved_model_folder, softmax_score_folder=softmax_score_folder,
                                     num_classes=known_category_num, batch_size=batch_size)
@@ -114,21 +119,21 @@ def main():
         os.system("sudo shutdown -h +2")
 
 
-def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num, input_size):
+def train_vanilla(df_train, df_val, num_classes, class_weight_dict, batch_size, max_queue_size, epoch_num, input_size):
     workers = os.cpu_count()
 
     classifier = VanillaClassifier(
         input_size=input_size,
         image_data_format=K.image_data_format(),
-        num_classes=known_category_num,
+        num_classes=num_classes,
         batch_size=batch_size,
         max_queue_size=max_queue_size,
         class_weight=class_weight_dict,
-        metrics=[balanced_accuracy(known_category_num), 'accuracy'],
+        metrics=[balanced_accuracy(num_classes), 'accuracy'],
         image_paths_train=df_train['path'].tolist(),
-        categories_train=np_utils.to_categorical(df_train['category'], num_classes=known_category_num),
+        categories_train=np_utils.to_categorical(df_train['category'], num_classes=num_classes),
         image_paths_val=df_val['path'].tolist(),
-        categories_val=np_utils.to_categorical(df_val['category'], num_classes=known_category_num)
+        categories_val=np_utils.to_categorical(df_val['category'], num_classes=num_classes)
     )
     classifier.model.summary()
     print('Begin to train Vanilla CNN')
@@ -137,24 +142,24 @@ def train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch
     K.clear_session()
 
 
-def train_transfer_learning(base_model_params, df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num):
+def train_transfer_learning(base_model_params, df_train, df_val, num_classes, class_weight_dict, batch_size, max_queue_size, epoch_num):
     workers = os.cpu_count()
 
     for model_param in base_model_params:
         classifier = TransferLearnClassifier(
             base_model_param=model_param,
             fc_layers=[512], # e.g. [512]
-            num_classes=known_category_num,
+            num_classes=num_classes,
             dropout=0.3, # e.g. 0.3
             batch_size=batch_size,
             max_queue_size=max_queue_size,
             image_data_format=K.image_data_format(),
-            metrics=[balanced_accuracy(known_category_num), 'accuracy'],
+            metrics=[balanced_accuracy(num_classes), 'accuracy'],
             class_weight=class_weight_dict,
             image_paths_train=df_train['path'].tolist(),
-            categories_train=np_utils.to_categorical(df_train['category'], num_classes=known_category_num),
+            categories_train=np_utils.to_categorical(df_train['category'], num_classes=num_classes),
             image_paths_val=df_val['path'].tolist(),
-            categories_val=np_utils.to_categorical(df_val['category'], num_classes=known_category_num)
+            categories_val=np_utils.to_categorical(df_val['category'], num_classes=num_classes)
         )
         classifier.model.summary()
         print("Begin to train {}".format(model_param.class_name))

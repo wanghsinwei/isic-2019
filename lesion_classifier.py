@@ -21,7 +21,7 @@ class LesionClassifier():
     def __init__(self, input_size, image_data_format=None, batch_size=32, max_queue_size=10, rescale=None, preprocessing_func=None, class_weight=None,
         num_classes=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
-        self.log_folder = 'logs'
+        self.history_folder = 'history'
         self.saved_model_folder = 'saved_models'
         self.input_size = input_size
         if image_data_format is None:
@@ -186,10 +186,10 @@ class LesionClassifier():
         return [checkpoint_balanced_acc, checkpoint_balanced_acc_weights, checkpoint_latest, checkpoint_loss]
 
     def _create_csvlogger_callback(self):
-        if not os.path.exists(self.log_folder):
-            os.makedirs(self.log_folder)
+        if not os.path.exists(self.history_folder):
+            os.makedirs(self.history_folder)
 
-        return CSVLogger(filename=os.path.join(self.log_folder, "{}.training.csv".format(self.model_name)), append=True)
+        return CSVLogger(filename=os.path.join(self.history_folder, "{}.training.csv".format(self.model_name)), append=True)
 
     @property
     def model(self):

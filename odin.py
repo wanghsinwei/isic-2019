@@ -16,7 +16,7 @@ from sklearn.metrics import roc_auc_score
 
 ModelAttr = NamedTuple('ModelAttr', [('model_name', str), ('postfix', str)])
 
-def compute_baseline_softmax_scores(pred_result_folder, out_dist_pred_result_folder, softmax_score_folder):
+def compute_baseline_softmax_scores(in_dist_pred_result_folder, out_dist_pred_result_folder, softmax_score_folder):
     """
     Calculating the base confidence of the output, no perturbation added here, no temperature scaling used.
     Directly copy the original prediction results.
@@ -30,7 +30,7 @@ def compute_baseline_softmax_scores(pred_result_folder, out_dist_pred_result_fol
 
     for modelattr in (ModelAttr(x, y) for x in model_names for y in postfixes):
         df = {
-            'In': pd.read_csv(os.path.join(pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix))),
+            'In': pd.read_csv(os.path.join(in_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix))),
             'Out': pd.read_csv(os.path.join(out_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
         }
         for dist in distributions:
@@ -40,7 +40,7 @@ def compute_baseline_softmax_scores(pred_result_folder, out_dist_pred_result_fol
                     softmax_score = np.max(softmax_probs)
                     f.write("{}\n".format(softmax_score))
 
-def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_pred_result_folder, out_dist_image_folder, saved_model_folder, softmax_score_folder, num_classes, batch_size):
+def compute_odin_softmax_scores(in_dist_pred_result_folder, in_dist_image_folder, out_dist_pred_result_folder, out_dist_image_folder, saved_model_folder, softmax_score_folder, num_classes, batch_size):
     print('Begin to compute ODIN softmax scores')
     model_names = ['DenseNet201', 'Xception', 'ResNeXt50']
     # postfixes = ['best_balanced_acc', 'best_loss', 'latest']
@@ -65,8 +65,8 @@ def compute_odin_softmax_scores(pred_result_folder, derm_image_folder, out_dist_
     for modelattr in (ModelAttr(x, y) for x in model_names for y in postfixes):
         # In-distribution data
         df = {}
-        df['In'] = pd.read_csv(os.path.join(pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
-        df['In']['path'] = df['In'].apply(lambda row : os.path.join(derm_image_folder, row['image']+'.jpg'), axis=1)
+        df['In'] = pd.read_csv(os.path.join(in_dist_pred_result_folder, "{}_{}.csv".format(modelattr.model_name, modelattr.postfix)))
+        df['In']['path'] = df['In'].apply(lambda row : os.path.join(in_dist_image_folder, row['image']+'.jpg'), axis=1)
         generator_in = ImageIterator(
                 image_paths=df['In']['path'].tolist(),
                 labels=None,
