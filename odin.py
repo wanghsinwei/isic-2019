@@ -186,13 +186,10 @@ def get_tpr_and_fpr(scores_in, scores_out, delta):
     fpr = np.sum(scores_out > delta) / np.float(len(scores_out))
     return tpr, fpr
 
-def find_best_delta_at_tpr95(in_dist_file, out_dist_file, delta_start=None, delta_end=None, delta_num=100000):
+def find_best_delta_at_tpr95(scores_in, scores_out, delta_start=None, delta_end=None, delta_num=1000000):
     """
     calculate the false positive rate (FPR) when true positive rate (TPR) is 95%
     """
-    scores_in = np.loadtxt(in_dist_file)
-    scores_out = np.loadtxt(out_dist_file)
-
     if delta_start is None:
         delta_start = sys.float_info.max
         delta_start = np.min(scores_in, initial=delta_start)

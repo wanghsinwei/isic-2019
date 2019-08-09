@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--autoshutdown', dest='autoshutdown', action='store_true', help='Automatically shutdown the computer after everything is done')
     parser.add_argument('--training', dest='training', action='store_true', help='Train models')
     parser.add_argument('--predictval', dest='predictval', action='store_true', help='Predict validation set')
-    parser.add_argument('--odin', dest='odin', action='store_true', help='Computing Baseline and ODIN softmax scores')
+    parser.add_argument('--odinscore', dest='odinscore', action='store_true', help='Computing Baseline and ODIN softmax scores')
     args = parser.parse_args()
     print(args)
 
@@ -104,7 +104,7 @@ def main():
                     print("\"{}\" doesn't exist".format(model_filepath))
 
     # Compute Baseline and ODIN Softmax Scores
-    if args.odin:
+    if args.odinscore:
         compute_baseline_softmax_scores(in_dist_pred_result_folder=pred_result_folder,
                                         out_dist_pred_result_folder=out_dist_pred_result_folder,
                                         softmax_score_folder=softmax_score_folder)
