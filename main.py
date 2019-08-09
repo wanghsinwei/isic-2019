@@ -47,7 +47,7 @@ def main():
     df_train, df_val = train_validation_split(df_ground_truth)
     class_weight_dict, _ = compute_class_weight_dict(df_train)
 
-    out_dist_image_folder = os.path.join(data_folder, 'ISIC_Archive_Out_Distribution')
+    out_dist_image_folder = os.path.join(data_folder, 'Out_Distribution')
     out_dist_pred_result_folder = 'out_dist_predict_results'
 
     # Models used to predict validation set
