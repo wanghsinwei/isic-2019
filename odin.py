@@ -40,7 +40,9 @@ def compute_baseline_softmax_scores(in_dist_pred_result_folder, out_dist_pred_re
                     softmax_score = np.max(softmax_probs)
                     f.write("{}\n".format(softmax_score))
 
-def compute_odin_softmax_scores(in_dist_pred_result_folder, in_dist_image_folder, out_dist_pred_result_folder, out_dist_image_folder, saved_model_folder, softmax_score_folder, num_classes, batch_size):
+
+def compute_odin_softmax_scores(in_dist_pred_result_folder, in_dist_image_folder, out_dist_pred_result_folder, out_dist_image_folder,
+                                model_folder, softmax_score_folder, num_classes, batch_size):
     print('Begin to compute ODIN softmax scores')
     model_names = ['DenseNet201', 'Xception', 'ResNeXt50']
     # postfixes = ['best_balanced_acc', 'best_loss', 'latest']
@@ -93,7 +95,7 @@ def compute_odin_softmax_scores(in_dist_pred_result_folder, in_dist_image_folder
                 data_format=image_data_format)
 
         # Load model
-        model_filepath = os.path.join(saved_model_folder, "{}_{}.hdf5".format(modelattr.model_name, modelattr.postfix))
+        model_filepath = os.path.join(model_folder, "{}_{}.hdf5".format(modelattr.model_name, modelattr.postfix))
         print('Load model: ', model_filepath)
         model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(num_classes)})
         need_norm_perturbations = (modelattr.model_name == 'DenseNet201' or modelattr.model_name == 'ResNeXt50')

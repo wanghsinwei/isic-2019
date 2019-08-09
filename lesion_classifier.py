@@ -18,11 +18,11 @@ class LesionClassifier():
         batch_size: Integer, size of a batch.
         image_data_format: String, either 'channels_first' or 'channels_last'.
     """
-    def __init__(self, input_size, image_data_format=None, batch_size=32, max_queue_size=10, rescale=None, preprocessing_func=None, class_weight=None,
+    def __init__(self, model_folder, input_size, image_data_format=None, batch_size=32, max_queue_size=10, rescale=None, preprocessing_func=None, class_weight=None,
         num_classes=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         self.history_folder = 'history'
-        self.saved_model_folder = 'saved_models'
+        self.model_folder = model_folder
         self.input_size = input_size
         if image_data_format is None:
             self.image_data_format = K.image_data_format()
@@ -73,7 +73,7 @@ class LesionClassifier():
 
     @staticmethod
     def create_aug_pipeline_val(input_size):
-        """Image Augmentation Pipeline for Validation Set."""
+        """Image Augmentation Pipeline for Validation/Test Set."""
         p_val = Pipeline()
         # # Center Crop
         # p_val.crop_centre(probability=1, percentage_area=0.9)
@@ -156,29 +156,29 @@ class LesionClassifier():
     def _create_checkpoint_callbacks(self):
         """Create the functions to be applied at given stages of the training procedure."""
 
-        if not os.path.exists(self.saved_model_folder):
-            os.makedirs(self.saved_model_folder)
+        if not os.path.exists(self.model_folder):
+            os.makedirs(self.model_folder)
         
         checkpoint_balanced_acc = ModelCheckpoint(
-            filepath=os.path.join(self.saved_model_folder, "{}_best_balanced_acc.hdf5".format(self.model_name)),
+            filepath=os.path.join(self.model_folder, "{}_best_balanced_acc.hdf5".format(self.model_name)),
             monitor='val_balanced_accuracy',
             verbose=1,
             save_best_only=True)
 
         checkpoint_balanced_acc_weights = ModelCheckpoint(
-            filepath=os.path.join(self.saved_model_folder, "{}_best_balanced_acc_weights.hdf5".format(self.model_name)),
+            filepath=os.path.join(self.model_folder, "{}_best_balanced_acc_weights.hdf5".format(self.model_name)),
             monitor='val_balanced_accuracy',
             verbose=1,
             save_weights_only=True,
             save_best_only=True)
         
         checkpoint_latest = ModelCheckpoint(
-            filepath=os.path.join(self.saved_model_folder, "{}_latest.hdf5".format(self.model_name)),
+            filepath=os.path.join(self.model_folder, "{}_latest.hdf5".format(self.model_name)),
             verbose=1,
             save_best_only=False)
 
         checkpoint_loss = ModelCheckpoint(
-            filepath=os.path.join(self.saved_model_folder, "{}_best_loss.hdf5".format(self.model_name)),
+            filepath=os.path.join(self.model_folder, "{}_best_loss.hdf5".format(self.model_name)),
             monitor='val_loss',
             verbose=1,
             save_best_only=True)

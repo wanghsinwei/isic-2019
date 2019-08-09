@@ -16,7 +16,7 @@ class TransferLearnClassifier(LesionClassifier):
         base_model_param: Instance of `BaseModelParam`.
     """
 
-    def __init__(self, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=32, max_queue_size=10, image_data_format=None, metrics=None,
+    def __init__(self, model_folder, base_model_param, fc_layers=None, num_classes=None, dropout=None, batch_size=32, max_queue_size=10, image_data_format=None, metrics=None,
         class_weight=None, image_paths_train=None, categories_train=None, image_paths_val=None, categories_val=None):
 
         if num_classes is None:
@@ -70,7 +70,7 @@ class TransferLearnClassifier(LesionClassifier):
         self._model.compile(optimizer=Adam(lr=start_lr), loss='categorical_crossentropy', metrics=self.metrics)
 
         super().__init__(
-            input_size=base_model_param.input_size, preprocessing_func=base_model_param.preprocessing_func, class_weight=class_weight, num_classes=num_classes,
+            model_folder=model_folder, input_size=base_model_param.input_size, preprocessing_func=base_model_param.preprocessing_func, class_weight=class_weight, num_classes=num_classes,
             image_data_format=image_data_format, batch_size=batch_size, max_queue_size=max_queue_size,
             image_paths_train=image_paths_train, categories_train=categories_train,
             image_paths_val=image_paths_val, categories_val=categories_val)

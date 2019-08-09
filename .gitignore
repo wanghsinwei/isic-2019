@@ -108,7 +108,7 @@ venv.bak/
 
 # Outputs of Training Models
 history/
-saved_models/
+models/
 predict_results/
 out_dist_predict_results/
 Cmd_History.txt

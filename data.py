@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.utils import class_weight
 
@@ -25,3 +26,9 @@ def compute_class_weight_dict(df_train):
     class_weights = class_weight.compute_class_weight('balanced', np.unique(df_train['category']), df_train['category'])
     class_weight_dict = dict(enumerate(class_weights))
     return class_weight_dict, class_weights
+
+def get_dataframe_from_img_folder(img_folder, has_path_col=True):
+    if has_path_col:
+        return pd.DataFrame([[Path(x).stem, x] for x in sorted(Path(img_folder).glob('**/*.jpg'))], columns =['image', 'path'])
+    else:
+        return pd.DataFrame([Path(x).stem for x in sorted(Path(img_folder).glob('**/*.jpg'))], columns =['image'])
