@@ -131,6 +131,8 @@ def main():
                 K.clear_session()
             else:
                 print("\"{}\" doesn't exist".format(model_filepath))
+
+        # TODO: Ensemble Models' Predictions on Test Data and compute_out_of_distribution_score
         
 
     # Compute Baseline and ODIN Softmax Scores

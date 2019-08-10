@@ -1,6 +1,8 @@
 from keras.preprocessing import image
 from keras import backend as K
 import numpy as np
+import pandas as pd
+import os
 import cv2
 
 def path_to_tensor(img_path, size=(224, 224)):
@@ -18,6 +20,7 @@ def paths_to_tensor(img_paths, size=(224, 224)):
 def calculate_mean_std(img_paths):
     """
     Calculate the image per channel mean and standard deviation.
+
     # References
         https://gist.github.com/jdhao/9a86d4b9e4f79c5330d54de991461fd6
     """
@@ -47,6 +50,7 @@ def calculate_mean_std(img_paths):
 def preprocess_input(x, data_format=None, **kwargs):
     """Preprocesses a numpy array encoding a batch of images. Each image is normalized by subtracting the mean and dividing by the standard deviation channel-wise.
     This function only implements the 'torch' mode which scale pixels between 0 and 1 and then will normalize each channel with respect to the training dataset (not include validation set).
+
     # Arguments
         x: a 3D or 4D numpy array consists of RGB values within [0, 255].
         data_format: data format of the image tensor.
@@ -99,3 +103,56 @@ def preprocess_input(x, data_format=None, **kwargs):
             x[..., 1] /= std[1]
             x[..., 2] /= std[2]
     return x
+
+
+def ensemble_predictions(result_folder, category_names,
+                         model_names=['DenseNet201', 'Xception', 'ResNeXt50'],
+                         postfixes=['best_balanced_acc', 'best_loss', 'latest']):
+    """ Ensemble predictions of different models. """
+    for postfix in postfixes:
+        # Load models' predictions
+        df_dict = {model_name : pd.read_csv(os.path.join(result_folder, "{}_{}.csv".format(model_name, postfix))) for model_name in model_names}
+
+        # Check row number
+        for i in range(1, len(model_names)):
+            if len(df_dict[model_names[0]]) != len(df_dict[model_names[i]]):
+                raise ValueError("Row numbers are inconsistent between {} and {}".format(model_names[0], model_names[i]))
+
+        # Check whether values of image column are consistent
+        for i in range(1, len(model_names)):
+            inconsistent_idx = np.where(df_dict[model_names[0]].image != df_dict[model_names[i]].image)[0]
+            if len(inconsistent_idx) > 0:
+                raise ValueError("{} values of image column are inconsistent between {} and {}"
+                                .format(len(inconsistent_idx), model_names[0], model_names[i]))
+
+        # Copy the first model's predictions
+        df_ensemble = df_dict[model_names[0]].drop(columns=['pred_category'])
+
+        # Add up predictions
+        for category_name in category_names:
+            for i in range(1, len(model_names)):
+                df_ensemble[category_name] = df_ensemble[category_name] + df_dict[model_names[i]][category_name]
+
+        # Take average of predictions
+        for category_name in category_names:
+            df_ensemble[category_name] = df_ensemble[category_name] / len(model_names)
+
+        # Ensemble Predictions
+        df_ensemble['pred_category'] = np.argmax(np.array(df_ensemble.iloc[:,1:(1+len(category_names))]), axis=1)
+
+        # Save Ensemble Predictions
+        ensemble_file = os.path.join(result_folder, "Ensemble_{}.csv".format(postfix))
+        df_ensemble.to_csv(path_or_buf=ensemble_file, index=False)
+        print('Save "{}"'.format(ensemble_file))
+
+def logistic(x, x0=0, L=1, k=1):
+    """ Calculate the value of a logistic function.
+
+    # Arguments
+        x0: The x-value of the sigmoid's midpoint.
+        L: The curve's maximum value.
+        k: The logistic growth rate or steepness of the curve.
+    # References https://en.wikipedia.org/wiki/Logistic_function
+    """
+
+    return L / (1 + np.exp(-k*(x-x0)))
