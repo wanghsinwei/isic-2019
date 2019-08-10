@@ -18,7 +18,7 @@ ModelAttr = NamedTuple('ModelAttr', [('model_name', str), ('postfix', str)])
 
 def compute_baseline_softmax_scores(in_dist_pred_result_folder, out_dist_pred_result_folder, softmax_score_folder):
     """
-    Calculating the base confidence of the output, no perturbation added here, no temperature scaling used.
+    Calculate the base confidence of the output, no perturbation added here, no temperature scaling used.
     Directly copy the original prediction results.
     """
     print('Begin to compute baseline softmax scores')
@@ -43,6 +43,7 @@ def compute_baseline_softmax_scores(in_dist_pred_result_folder, out_dist_pred_re
 
 def compute_odin_softmax_scores(in_dist_pred_result_folder, in_dist_image_folder, out_dist_pred_result_folder, out_dist_image_folder,
                                 model_folder, softmax_score_folder, num_classes, batch_size):
+    """ Calculate softmax scores for different combinations of ODIN parameters. """
     print('Begin to compute ODIN softmax scores')
     model_names = ['DenseNet201', 'Xception', 'ResNeXt50']
     # postfixes = ['best_balanced_acc', 'best_loss', 'latest']
@@ -96,28 +97,12 @@ def compute_odin_softmax_scores(in_dist_pred_result_folder, in_dist_image_folder
 
         # Load model
         model_filepath = os.path.join(model_folder, "{}_{}.hdf5".format(modelattr.model_name, modelattr.postfix))
-        print('Load model: ', model_filepath)
+        print('Loading model: ', model_filepath)
         model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(num_classes)})
         need_norm_perturbations = (modelattr.model_name == 'DenseNet201' or modelattr.model_name == 'ResNeXt50')
 
         for temperature in temperatures:
-            ### Define Keras Functions
-            # Compute loss based on the second last layer's output and temperature scaling
-            dense_pred_layer_output = model.get_layer('dense_pred').output
-            scaled_dense_pred_output = dense_pred_layer_output / temperature
-            label_tensor = K.one_hot(K.argmax(model.outputs), num_classes)
-            # ODIN implementation uses torch.nn.CrossEntropyLoss
-            # Keras will call tf.nn.softmax_cross_entropy_with_logits when from_logits is True
-            loss = K.categorical_crossentropy(label_tensor, scaled_dense_pred_output, from_logits=True)
-
-            # Compute gradient of loss with respect to inputs
-            grad_loss = K.gradients(loss, model.inputs)
-
-            # The learning phase flag is a bool tensor (0 = test, 1 = train)
-            compute_perturbations = K.function(model.inputs + [K.learning_phase()], grad_loss)
-
-            # https://keras.io/getting-started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer
-            get_scaled_dense_pred_output = K.function(model.inputs + [K.learning_phase()], [scaled_dense_pred_output])
+            compute_perturbations, get_scaled_dense_pred_output = get_perturbation_helper_func(model, temperature, num_classes)
 
             for magnitude in magnitudes:
                 for dist in distributions:
@@ -164,6 +149,26 @@ def compute_odin_softmax_scores(in_dist_pred_result_folder, in_dist_image_folder
         del model
         K.clear_session()
 
+def get_perturbation_helper_func(model, temperature, num_classes):
+    """ Return Keras functions for calculating perturbations. """
+    # Compute loss based on the second last layer's output and temperature scaling
+    dense_pred_layer_output = model.get_layer('dense_pred').output
+    scaled_dense_pred_output = dense_pred_layer_output / temperature
+    label_tensor = K.one_hot(K.argmax(model.outputs), num_classes)
+    # ODIN implementation uses torch.nn.CrossEntropyLoss
+    # Keras will call tf.nn.softmax_cross_entropy_with_logits when from_logits is True
+    loss = K.categorical_crossentropy(label_tensor, scaled_dense_pred_output, from_logits=True)
+
+    # Compute gradient of loss with respect to inputs
+    grad_loss = K.gradients(loss, model.inputs)
+
+    # The learning phase flag is a bool tensor (0 = test, 1 = train)
+    compute_perturbations = K.function(model.inputs + [K.learning_phase()], grad_loss)
+
+    # https://keras.io/getting-started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer
+    get_scaled_dense_pred_output = K.function(model.inputs + [K.learning_phase()], [scaled_dense_pred_output])
+
+    return compute_perturbations, get_scaled_dense_pred_output
 
 def norm_perturbations(x, image_data_format):
     std = [0.2422, 0.2235, 0.2315]
@@ -234,3 +239,47 @@ def auroc(in_dist_file, out_dist_file):
     y_score = np.concatenate([scores_in, scores_out])
 
     return roc_auc_score(y_true, y_score)
+
+
+def compute_out_of_distribution_score(model_folder, df, num_classes, temperature=2, magnitude=0.0002, delta=0.90641, batch_size=32):
+    model_filepath = os.path.join(model_folder, 'DenseNet201_best_balanced_acc.hdf5')
+    print('Loading model: ', model_filepath)
+    model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(num_classes)})
+    image_data_format = K.image_data_format()
+    model_param_map = get_transfer_model_param_map()
+    generator = ImageIterator(
+        image_paths=df['path'].tolist(),
+        labels=None,
+        augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(model_param_map['DenseNet201'].input_size),
+        preprocessing_function=model_param_map['DenseNet201'].preprocessing_func,
+        batch_size=batch_size,
+        shuffle=False,
+        rescale=None,
+        pregen_augmented_images=False,
+        data_format=image_data_format)
+
+    compute_perturbations, get_scaled_dense_pred_output = get_perturbation_helper_func(model, temperature, num_classes)
+
+    df_score = df[['image']].copy()
+    softmax_scores = []
+    learning_phase = 0 # 0 = test, 1 = train
+    steps = math.ceil(df.shape[0] / batch_size)
+    for _ in trange(steps):
+        images = next(generator)
+        perturbations = compute_perturbations([images, learning_phase])[0]
+        # Get sign of perturbations
+        perturbations = np.sign(perturbations)
+        # DenseNet201 need normalization
+        perturbations = norm_perturbations(perturbations, image_data_format)
+        # Add perturbations to images
+        perturbative_images = images - magnitude * perturbations
+        # Calculate the confidence after adding perturbations
+        dense_pred_outputs = get_scaled_dense_pred_output([perturbative_images, learning_phase])[0]
+        softmax_probs = softmax(dense_pred_outputs)
+        softmax_scores.extend(np.max(softmax_probs, axis=-1).tolist())
+    
+    del model
+    K.clear_session()
+    df_score['softmax_score'] = softmax_scores
+    return df_score
+
