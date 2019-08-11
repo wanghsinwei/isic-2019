@@ -105,7 +105,7 @@ def preprocess_input(x, data_format=None, **kwargs):
     return x
 
 
-def ensemble_predictions(result_folder, category_names,
+def ensemble_predictions(result_folder, category_names, save_file=True,
                          model_names=['DenseNet201', 'Xception', 'ResNeXt50'],
                          postfixes=['best_balanced_acc', 'best_loss', 'latest']):
     """ Ensemble predictions of different models. """
@@ -141,9 +141,11 @@ def ensemble_predictions(result_folder, category_names,
         df_ensemble['pred_category'] = np.argmax(np.array(df_ensemble.iloc[:,1:(1+len(category_names))]), axis=1)
 
         # Save Ensemble Predictions
-        ensemble_file = os.path.join(result_folder, "Ensemble_{}.csv".format(postfix))
-        df_ensemble.to_csv(path_or_buf=ensemble_file, index=False)
-        print('Save "{}"'.format(ensemble_file))
+        if save_file:
+            ensemble_file = os.path.join(result_folder, "Ensemble_{}.csv".format(postfix))
+            df_ensemble.to_csv(path_or_buf=ensemble_file, index=False)
+            print('Save "{}"'.format(ensemble_file))
+    return df_ensemble
 
 def logistic(x, x0=0, L=1, k=1):
     """ Calculate the value of a logistic function.

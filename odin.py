@@ -13,6 +13,7 @@ from keras_numpy_backend import softmax
 from lesion_classifier import LesionClassifier
 from tqdm import trange
 from sklearn.metrics import roc_auc_score
+from utils import logistic
 
 ModelAttr = NamedTuple('ModelAttr', [('model_name', str), ('postfix', str)])
 
@@ -241,7 +242,7 @@ def auroc(in_dist_file, out_dist_file):
     return roc_auc_score(y_true, y_score)
 
 
-def compute_out_of_distribution_score(model_folder, df, num_classes, temperature=2, magnitude=0.0002, delta=0.90385, batch_size=32):
+def compute_out_of_distribution_score(model_folder, df, num_classes, batch_size=32, temperature=2, magnitude=0.0002, delta=0.90385):
     model_filepath = os.path.join(model_folder, 'DenseNet201_best_balanced_acc.hdf5')
     print('Loading model: ', model_filepath)
     model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(num_classes)})
@@ -280,6 +281,8 @@ def compute_out_of_distribution_score(model_folder, df, num_classes, temperature
     
     del model
     K.clear_session()
+
     df_score['softmax_score'] = softmax_scores
+    df_score['out_dist_score'] = 1 - logistic(x=df_score['softmax_score'], x0=delta, k=20)
     return df_score
 

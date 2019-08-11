@@ -10,7 +10,8 @@ from transfer_learn_classifier import TransferLearnClassifier
 from metrics import balanced_accuracy
 from base_model_param import get_transfer_model_param_map
 from lesion_classifier import LesionClassifier
-from odin import compute_baseline_softmax_scores, compute_odin_softmax_scores
+from odin import compute_baseline_softmax_scores, compute_odin_softmax_scores, compute_out_of_distribution_score
+from utils import ensemble_predictions
 
 def main():
     parser = argparse.ArgumentParser(description='ISIC-2019 Skin Lesion Classifiers')
@@ -45,7 +46,7 @@ def main():
 
     derm_image_folder = os.path.join(data_folder, 'ISIC_2019_Training_Input')
     ground_truth_file = os.path.join(data_folder, 'ISIC_2019_Training_GroundTruth.csv')
-    df_ground_truth, known_category_names, unknown_category_names = load_isic_data(derm_image_folder, ground_truth_file)
+    df_ground_truth, known_category_names, unknown_category_name = load_isic_data(derm_image_folder, ground_truth_file)
     known_category_num = len(known_category_names)
     df_train, df_val = train_validation_split(df_ground_truth)
     class_weight_dict, _ = compute_class_weight_dict(df_train)
@@ -68,11 +69,12 @@ def main():
                                       'input_size': input_size_vanilla,
                                       'preprocessing_function': VanillaClassifier.preprocess_input})
     
+    transfer_models = args.models.copy()
+    if 'Vanilla' in transfer_models:
+        transfer_models.remove('Vanilla')
+    
     # Train models by Transfer Learning
     if args.models is not None:
-        transfer_models = args.models.copy()
-        if 'Vanilla' in transfer_models:
-            transfer_models.remove('Vanilla')
         model_param_map = get_transfer_model_param_map()
         base_model_params = [model_param_map[x] for x in transfer_models]
         if args.training:
@@ -111,7 +113,7 @@ def main():
 
     # Predict Test Data
     if args.predtest:
-        df_test = get_dataframe_from_img_folder(test_image_folder)
+        df_test = get_dataframe_from_img_folder(test_image_folder, has_path_col=True)
         df_test.drop(columns=['path']).to_csv(os.path.join(pred_result_folder, 'ISIC_2019_Test.csv'), index=False)
         postfix = 'best_balanced_acc'
         for m in models_to_predict_val:
@@ -132,8 +134,14 @@ def main():
             else:
                 print("\"{}\" doesn't exist".format(model_filepath))
 
-        # TODO: Ensemble Models' Predictions on Test Data and compute_out_of_distribution_score
-        
+        # Ensemble Models' Predictions on Test Data
+        df_ensemble = ensemble_predictions(result_folder=pred_result_folder, category_names=known_category_names, save_file=False,
+                                           model_names=transfer_models, postfixes=[postfix]).drop(columns=['pred_category'])
+        # Compute Out-of-Distribution scores
+        df_score = compute_out_of_distribution_score(model_folder=model_folder, df=df_test, num_classes=known_category_num, batch_size=batch_size)
+        # Merge ensemble predictions with out-of-Distribution scores
+        df_ensemble[unknown_category_name] = df_score['out_dist_score']
+        df_ensemble.to_csv(os.path.join(pred_result_folder, "Ensemble_{}.csv".format(postfix)), index=False)
 
     # Compute Baseline and ODIN Softmax Scores
     if args.odinscore:
@@ -148,6 +156,7 @@ def main():
 
     # Shutdown
     if args.autoshutdown:
+        # Shutdown after 2 minutes
         os.system("sudo shutdown -h +2")
 
 
