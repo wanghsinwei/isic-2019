@@ -4,7 +4,7 @@ import datetime
 from keras.models import load_model
 from keras import backend as K
 from keras.utils import np_utils
-from data import load_isic_data, train_validation_split, compute_class_weight_dict, get_dataframe_from_img_folder
+from data import load_isic_training_data, load_isic_training_and_out_dist_data, train_validation_split, compute_class_weight_dict, get_dataframe_from_img_folder
 from vanilla_classifier import VanillaClassifier
 from transfer_learn_classifier import TransferLearnClassifier
 from metrics import balanced_accuracy
@@ -15,18 +15,19 @@ from utils import ensemble_predictions
 
 def main():
     parser = argparse.ArgumentParser(description='ISIC-2019 Skin Lesion Classifiers')
-    parser.add_argument('data', metavar='DIR', help='path to data foler')
+    parser.add_argument('data', metavar='DIR', help='path to data folder')
     parser.add_argument('--batchsize', type=int, help='Batch size (default: %(default)s)', default=32)
     parser.add_argument('--maxqueuesize', type=int, help='Maximum size for the generator queue (default: %(default)s)', default=10)
     parser.add_argument('--epoch', type=int, help='Number of epochs (default: %(default)s)', default=100)
     parser.add_argument('--model', dest='models', nargs='*', choices=['Vanilla', 'DenseNet201', 'Xception', 'ResNeXt50', 'NASNetLarge', 'InceptionResNetV2'], help='Models')
-    parser.add_argument('--autoshutdown', dest='autoshutdown', action='store_true', help='Automatically shutdown the computer after everything is done')
+    parser.add_argument('--autoshutdown', dest='autoshutdown', action='store_true', help='Automatically shutdown the computer after everything is done.')
     parser.add_argument('--training', dest='training', action='store_true', help='Train models')
     parser.add_argument('--predval', dest='predval', action='store_true', help='Predict validation set')
-    parser.add_argument('--predtest', dest='predtest', action='store_true', help='Predict test data containing 8238 JPEG images of skin lesions')
+    parser.add_argument('--predtest', dest='predtest', action='store_true', help='Predict the test data which contains 8238 JPEG images of skin lesions.')
     parser.add_argument('--predresultfolder', help='Name of the prediction result folder (default: %(default)s)', default='predict_results')
     parser.add_argument('--modelfolder', help='Name of the model folder (default: %(default)s)', default='models')
-    parser.add_argument('--odinscore', dest='odinscore', action='store_true', help='Computing Baseline and ODIN softmax scores')
+    parser.add_argument('--odinscore', dest='odinscore', action='store_true', help='Only relevant if approach is 1. Computing Baseline and ODIN softmax scores.')
+    parser.add_argument('--approach', type=int, choices=range(1, 3), required=True, help='Approach for training the models')
     args = parser.parse_args()
     print(args)
 
@@ -43,31 +44,42 @@ def main():
     batch_size = args.batchsize
     max_queue_size = args.maxqueuesize
     epoch_num = args.epoch
+    approach = args.approach
 
-    derm_image_folder = os.path.join(data_folder, 'ISIC_2019_Training_Input')
+    # ISIC data
+    training_image_folder = os.path.join(data_folder, 'ISIC_2019_Training_Input')
     ground_truth_file = os.path.join(data_folder, 'ISIC_2019_Training_GroundTruth.csv')
-    df_ground_truth, known_category_names, unknown_category_name = load_isic_data(derm_image_folder, ground_truth_file)
-    known_category_num = len(known_category_names)
-    df_train, df_val = train_validation_split(df_ground_truth)
-    class_weight_dict, _ = compute_class_weight_dict(df_train)
-
     test_image_folder = os.path.join(data_folder, 'ISIC_2019_Test_Input')
 
+    # Out-of-distribution data
     out_dist_image_folder = os.path.join(data_folder, 'Out_Distribution')
     out_dist_pred_result_folder = 'out_dist_predict_results'
 
-    # Models used to predict validation set
-    models_to_predict_val = []
+    # Ground truth of different approaches
+    if approach == 1:
+        df_ground_truth, known_category_names, unknown_category_name = load_isic_training_data(training_image_folder, ground_truth_file)
+        category_names = known_category_names
+    elif approach == 2:
+        df_ground_truth, category_names = load_isic_training_and_out_dist_data(training_image_folder, ground_truth_file, out_dist_image_folder)
+    else:
+        print('Unknown appraoch:', approach)
+        return
+    df_train, df_val = train_validation_split(df_ground_truth)
+    class_weight_dict, _ = compute_class_weight_dict(df_train)
+    category_num = len(category_names)
+
+    # Models used for predictition
+    models_to_predict = []
     workers = os.cpu_count()
 
     # Train Vanilla CNN
     if args.models is not None and 'Vanilla' in args.models:
         input_size_vanilla = (224, 224)
         if args.training:
-            train_vanilla(df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num, input_size_vanilla, model_folder)
-        models_to_predict_val.append({'model_name': 'Vanilla',
-                                      'input_size': input_size_vanilla,
-                                      'preprocessing_function': VanillaClassifier.preprocess_input})
+            train_vanilla(df_train, df_val, category_num, class_weight_dict, batch_size, max_queue_size, epoch_num, input_size_vanilla, model_folder)
+        models_to_predict.append({'model_name': 'Vanilla',
+                                  'input_size': input_size_vanilla,
+                                  'preprocessing_function': VanillaClassifier.preprocess_input})
     
     transfer_models = args.models.copy()
     if 'Vanilla' in transfer_models:
@@ -78,11 +90,11 @@ def main():
         model_param_map = get_transfer_model_param_map()
         base_model_params = [model_param_map[x] for x in transfer_models]
         if args.training:
-            train_transfer_learning(base_model_params, df_train, df_val, known_category_num, class_weight_dict, batch_size, max_queue_size, epoch_num, model_folder)
+            train_transfer_learning(base_model_params, df_train, df_val, category_num, class_weight_dict, batch_size, max_queue_size, epoch_num, model_folder)
         for base_model_param in base_model_params:
-            models_to_predict_val.append({'model_name': base_model_param.class_name,
-                                        'input_size': base_model_param.input_size,
-                                        'preprocessing_function': base_model_param.preprocessing_func})
+            models_to_predict.append({'model_name': base_model_param.class_name,
+                                      'input_size': base_model_param.input_size,
+                                      'preprocessing_function': base_model_param.preprocessing_func})
 
     # Predict validation set
     if args.predval:
@@ -93,13 +105,13 @@ def main():
 
         postfixes = ['best_balanced_acc', 'best_loss', 'latest']
         for postfix in postfixes:
-            for m in models_to_predict_val:
+            for m in models_to_predict:
                 model_filepath = os.path.join(model_folder, "{}_{}.hdf5".format(m['model_name'], postfix))
                 if os.path.exists(model_filepath):
                     print("===== Predict validation set using \"{}_{}\" model =====".format(m['model_name'], postfix))
-                    model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(known_category_num)})
+                    model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(category_num)})
                     LesionClassifier.predict_dataframe(model=model, df=df_val,
-                                                       category_names=known_category_names,
+                                                       category_names=category_names,
                                                        augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(m['input_size']),
                                                        preprocessing_function=m['preprocessing_function'],
                                                        batch_size=batch_size,
@@ -116,13 +128,13 @@ def main():
         df_test = get_dataframe_from_img_folder(test_image_folder, has_path_col=True)
         df_test.drop(columns=['path']).to_csv(os.path.join(pred_result_folder, 'ISIC_2019_Test.csv'), index=False)
         postfix = 'best_balanced_acc'
-        for m in models_to_predict_val:
+        for m in models_to_predict:
             model_filepath = os.path.join(model_folder, "{}_{}.hdf5".format(m['model_name'], postfix))
             if os.path.exists(model_filepath):
                 print("===== Predict test data using \"{}_{}\" model =====".format(m['model_name'], postfix))
-                model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(known_category_num)})
+                model = load_model(filepath=model_filepath, custom_objects={'balanced_accuracy': balanced_accuracy(category_num)})
                 LesionClassifier.predict_dataframe(model=model, df=df_test,
-                                                   category_names=known_category_names,
+                                                   category_names=category_names,
                                                    augmentation_pipeline=LesionClassifier.create_aug_pipeline_val(m['input_size']),
                                                    preprocessing_function=m['preprocessing_function'],
                                                    batch_size=batch_size,
@@ -135,24 +147,24 @@ def main():
                 print("\"{}\" doesn't exist".format(model_filepath))
 
         # Ensemble Models' Predictions on Test Data
-        df_ensemble = ensemble_predictions(result_folder=pred_result_folder, category_names=known_category_names, save_file=False,
+        df_ensemble = ensemble_predictions(result_folder=pred_result_folder, category_names=category_names, save_file=False,
                                            model_names=transfer_models, postfixes=[postfix]).drop(columns=['pred_category'])
         # Compute Out-of-Distribution scores
-        df_score = compute_out_of_distribution_score(model_folder=model_folder, df=df_test, num_classes=known_category_num, batch_size=batch_size)
+        df_score = compute_out_of_distribution_score(model_folder=model_folder, df=df_test, num_classes=category_num, batch_size=batch_size)
         # Merge ensemble predictions with out-of-Distribution scores
         df_ensemble[unknown_category_name] = df_score['out_dist_score']
         df_ensemble.to_csv(os.path.join(pred_result_folder, "Ensemble_{}.csv".format(postfix)), index=False)
 
     # Compute Baseline and ODIN Softmax Scores
-    if args.odinscore:
+    if args.odinscore and approach == 1:
         compute_baseline_softmax_scores(in_dist_pred_result_folder=pred_result_folder,
                                         out_dist_pred_result_folder=out_dist_pred_result_folder,
                                         softmax_score_folder=softmax_score_folder)
                                         
-        compute_odin_softmax_scores(in_dist_pred_result_folder=pred_result_folder, in_dist_image_folder=derm_image_folder,
+        compute_odin_softmax_scores(in_dist_pred_result_folder=pred_result_folder, in_dist_image_folder=training_image_folder,
                                     out_dist_pred_result_folder=out_dist_pred_result_folder, out_dist_image_folder=out_dist_image_folder,
                                     model_folder=model_folder, softmax_score_folder=softmax_score_folder,
-                                    num_classes=known_category_num, batch_size=batch_size)
+                                    num_classes=category_num, batch_size=batch_size)
 
     # Shutdown
     if args.autoshutdown:
