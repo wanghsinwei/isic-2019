@@ -149,10 +149,11 @@ def main():
         # Ensemble Models' Predictions on Test Data
         df_ensemble = ensemble_predictions(result_folder=pred_result_folder, category_names=category_names, save_file=False,
                                            model_names=transfer_models, postfixes=[postfix]).drop(columns=['pred_category'])
-        # Compute Out-of-Distribution scores
-        df_score = compute_out_of_distribution_score(model_folder=model_folder, df=df_test, num_classes=category_num, batch_size=batch_size)
-        # Merge ensemble predictions with out-of-Distribution scores
-        df_ensemble[unknown_category_name] = df_score['out_dist_score']
+        if approach == 1:
+            # Compute Out-of-Distribution scores
+            df_score = compute_out_of_distribution_score(model_folder=model_folder, df=df_test, num_classes=category_num, batch_size=batch_size)
+            # Merge ensemble predictions with out-of-Distribution scores
+            df_ensemble[unknown_category_name] = df_score['out_dist_score']
         df_ensemble.to_csv(os.path.join(pred_result_folder, "Ensemble_{}.csv".format(postfix)), index=False)
 
     # Compute Baseline and ODIN Softmax Scores
