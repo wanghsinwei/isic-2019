@@ -49,7 +49,7 @@ def calculate_mean_std(img_paths):
 
 def preprocess_input(x, data_format=None, **kwargs):
     """Preprocesses a numpy array encoding a batch of images. Each image is normalized by subtracting the mean and dividing by the standard deviation channel-wise.
-    This function only implements the 'torch' mode which scale pixels between 0 and 1 and then will normalize each channel with respect to the training dataset (not include validation set).
+    This function only implements the 'torch' mode which scale pixels between 0 and 1 and then will normalize each channel with respect to the training dataset of approach 1 (not include validation set).
 
     # Arguments
         x: a 3D or 4D numpy array consists of RGB values within [0, 255].
@@ -104,6 +104,58 @@ def preprocess_input(x, data_format=None, **kwargs):
             x[..., 2] /= std[2]
     return x
 
+def preprocess_input_2(x, data_format=None, **kwargs):
+    """Preprocesses a numpy array encoding a batch of images. Each image is normalized by subtracting the mean and dividing by the standard deviation channel-wise.
+    This function only implements the 'torch' mode which scale pixels between 0 and 1 and then will normalize each channel with respect to the training dataset of approach 2 (not include validation set).
+
+    # Arguments
+        x: a 3D or 4D numpy array consists of RGB values within [0, 255].
+        data_format: data format of the image tensor.
+    # Returns
+        Preprocessed array.
+    # References
+        https://github.com/keras-team/keras-applications/blob/master/keras_applications/imagenet_utils.py
+    """
+    if not issubclass(x.dtype.type, np.floating):
+        x = x.astype(K.floatx(), copy=False)
+
+    # Mean and STD calculated over the training set of approach 2
+    # Mean:[0.6296238064420809, 0.5202302775509949, 0.5032952297664738]
+    # STD:[0.24130893564897463, 0.22150225707876617, 0.2297057828857888]
+    x /= 255.
+    mean = [0.6296, 0.5202, 0.5033]
+    std = [0.2413, 0.2215, 0.2297]
+
+    if data_format is None:
+        data_format = K.image_data_format()
+
+    # Zero-center by mean pixel
+    if data_format == 'channels_first':
+        if x.ndim == 3:
+            x[0, :, :] -= mean[0]
+            x[1, :, :] -= mean[1]
+            x[2, :, :] -= mean[2]
+            if std is not None:
+                x[0, :, :] /= std[0]
+                x[1, :, :] /= std[1]
+                x[2, :, :] /= std[2]
+        else:
+            x[:, 0, :, :] -= mean[0]
+            x[:, 1, :, :] -= mean[1]
+            x[:, 2, :, :] -= mean[2]
+            if std is not None:
+                x[:, 0, :, :] /= std[0]
+                x[:, 1, :, :] /= std[1]
+                x[:, 2, :, :] /= std[2]
+    else:
+        x[..., 0] -= mean[0]
+        x[..., 1] -= mean[1]
+        x[..., 2] -= mean[2]
+        if std is not None:
+            x[..., 0] /= std[0]
+            x[..., 1] /= std[1]
+            x[..., 2] /= std[2]
+    return x
 
 def ensemble_predictions(result_folder, category_names, save_file=True,
                          model_names=['DenseNet201', 'Xception', 'ResNeXt50'],

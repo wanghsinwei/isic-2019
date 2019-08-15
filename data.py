@@ -51,6 +51,6 @@ def compute_class_weight_dict(df):
 
 def get_dataframe_from_img_folder(img_folder, has_path_col=True):
     if has_path_col:
-        return pd.DataFrame([[Path(x).stem, x] for x in sorted(Path(img_folder).glob('**/*.jpg'))], columns =['image', 'path'])
+        return pd.DataFrame([[Path(x).stem, x] for x in sorted(Path(img_folder).glob('**/*.jpg'))], columns=['image', 'path'], dtype=np.str)
     else:
-        return pd.DataFrame([Path(x).stem for x in sorted(Path(img_folder).glob('**/*.jpg'))], columns =['image'])
+        return pd.DataFrame([Path(x).stem for x in sorted(Path(img_folder).glob('**/*.jpg'))], columns=['image'], dtype=np.str)

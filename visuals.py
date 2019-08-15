@@ -22,7 +22,7 @@ def plot_complexity_graph(csv_file, title=None, figsize=(14, 10), feature_extrac
 
     ax2.plot(df['balanced_accuracy'], label='Training Accuracy')
     ax2.plot(df['val_balanced_accuracy'], label='Validation Accuracy')
-    ax2.set(title='Training and Validation Accuracy', xlabel='epoch', ylabel='Balanced Accuracy')
+    ax2.set(title='Training and Validation Accuracy', xlabel='Epoch', ylabel='Balanced Accuracy')
     ax2.set_xlim([epoch_min, epoch_max])
     ax2.set_ylim([accuracy_min, accuracy_max])
     ax2.legend()
@@ -38,7 +38,7 @@ def plot_complexity_graph(csv_file, title=None, figsize=(14, 10), feature_extrac
     fig.tight_layout(rect=[0, 0.02, 1, 0.96])
     return fig
 
-def plot_grouped_2bars(scalars, scalarlabels, xticklabels, title=None):
+def plot_grouped_2bars(scalars, scalarlabels, xticklabels, title=None, xlabel=None, ylabel=None):
     x = np.arange(len(xticklabels))  # the label locations
     width = 0.35  # the width of the bars
 
@@ -52,6 +52,7 @@ def plot_grouped_2bars(scalars, scalarlabels, xticklabels, title=None):
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_xticks(x)
     ax.set_xticklabels(xticklabels)
+    ax.set(xlabel=xlabel, ylabel=ylabel)
     ax.legend()
     autolabel(ax, rects1)
     autolabel(ax, rects2)

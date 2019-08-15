@@ -8,7 +8,7 @@ from data import load_isic_training_data, load_isic_training_and_out_dist_data, 
 from vanilla_classifier import VanillaClassifier
 from transfer_learn_classifier import TransferLearnClassifier
 from metrics import balanced_accuracy
-from base_model_param import get_transfer_model_param_map
+from base_model_param import get_transfer_model_param_map, get_transfer_model_param_map_2
 from lesion_classifier import LesionClassifier
 from odin import compute_baseline_softmax_scores, compute_odin_softmax_scores, compute_out_of_distribution_score
 from utils import ensemble_predictions
@@ -48,7 +48,6 @@ def main():
 
     # ISIC data
     training_image_folder = os.path.join(data_folder, 'ISIC_2019_Training_Input')
-    ground_truth_file = os.path.join(data_folder, 'ISIC_2019_Training_GroundTruth.csv')
     test_image_folder = os.path.join(data_folder, 'ISIC_2019_Test_Input')
 
     # Out-of-distribution data
@@ -57,9 +56,11 @@ def main():
 
     # Ground truth of different approaches
     if approach == 1:
+        ground_truth_file = os.path.join(data_folder, 'ISIC_2019_Training_GroundTruth.csv')
         df_ground_truth, known_category_names, unknown_category_name = load_isic_training_data(training_image_folder, ground_truth_file)
         category_names = known_category_names
     elif approach == 2:
+        ground_truth_file = os.path.join(data_folder, 'ISIC_2019_Training_GroundTruth_DuplicateRemoved.csv')
         df_ground_truth, category_names = load_isic_training_and_out_dist_data(training_image_folder, ground_truth_file, out_dist_image_folder)
     else:
         print('Unknown appraoch:', approach)
@@ -87,7 +88,7 @@ def main():
     
     # Train models by Transfer Learning
     if args.models is not None:
-        model_param_map = get_transfer_model_param_map()
+        model_param_map = get_transfer_model_param_map() if approach == 1 else get_transfer_model_param_map_2()
         base_model_params = [model_param_map[x] for x in transfer_models]
         if args.training:
             train_transfer_learning(base_model_params, df_train, df_val, category_num, class_weight_dict, batch_size, max_queue_size, epoch_num, model_folder)
