@@ -24,7 +24,8 @@ def main():
     parser.add_argument('--training', dest='training', action='store_true', help='Train models')
     parser.add_argument('--predval', dest='predval', action='store_true', help='Predict validation set')
     parser.add_argument('--predtest', dest='predtest', action='store_true', help='Predict the test data which contains 8238 JPEG images of skin lesions.')
-    parser.add_argument('--predresultfolder', help='Name of the prediction result folder (default: %(default)s)', default='predict_results')
+    parser.add_argument('--predvalresultfolder', help='Name of the prediction result folder for validation set (default: %(default)s)', default='val_predict_results')
+    parser.add_argument('--predtestresultfolder', help='Name of the prediction result folder for test data (default: %(default)s)', default='test_predict_results')
     parser.add_argument('--modelfolder', help='Name of the model folder (default: %(default)s)', default='models')
     parser.add_argument('--odinscore', dest='odinscore', action='store_true', help='Only relevant if approach is 1. Computing Baseline and ODIN softmax scores.')
     parser.add_argument('--approach', type=int, choices=range(1, 3), required=True, help='Approach for training the models')
@@ -36,11 +37,10 @@ def main():
         f.write("{}\t{}\n".format(str(datetime.datetime.utcnow()), str(args)))
 
     data_folder = args.data
-    pred_result_folder = args.predresultfolder
-    os.makedirs(pred_result_folder, exist_ok=True)
+    pred_result_folder_val = args.predvalresultfolder
+    pred_result_folder_test = args.predtestresultfolder
     model_folder = args.modelfolder
     softmax_score_folder = 'softmax_scores'
-    os.makedirs(softmax_score_folder, exist_ok=True)
     batch_size = args.batchsize
     max_queue_size = args.maxqueuesize
     epoch_num = args.epoch
@@ -99,8 +99,9 @@ def main():
 
     # Predict validation set
     if args.predval:
+        os.makedirs(pred_result_folder_val, exist_ok=True)
         # Save Ground Truth of validation set
-        val_ground_truth_file_path = os.path.join(pred_result_folder, 'Validation_Set_GroundTruth.csv')
+        val_ground_truth_file_path = os.path.join(pred_result_folder_val, 'Validation_Set_GroundTruth.csv')
         df_val.drop(columns=['path', 'category']).to_csv(path_or_buf=val_ground_truth_file_path, index=False)
         print("Save \"{}\"".format(val_ground_truth_file_path))
 
@@ -117,8 +118,8 @@ def main():
                                                        preprocessing_function=m['preprocessing_function'],
                                                        batch_size=batch_size,
                                                        workers=workers,
-                                                       softmax_save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], postfix),
-                                                       logit_save_file_name=os.path.join(pred_result_folder, "{}_{}_logit.csv").format(m['model_name'], postfix))
+                                                       softmax_save_file_name=os.path.join(pred_result_folder_val, "{}_{}.csv").format(m['model_name'], postfix),
+                                                       logit_save_file_name=os.path.join(pred_result_folder_val, "{}_{}_logit.csv").format(m['model_name'], postfix))
                     del model
                     K.clear_session()
                 else:
@@ -126,8 +127,9 @@ def main():
 
     # Predict Test Data
     if args.predtest:
+        os.makedirs(pred_result_folder_test, exist_ok=True)
         df_test = get_dataframe_from_img_folder(test_image_folder, has_path_col=True)
-        df_test.drop(columns=['path']).to_csv(os.path.join(pred_result_folder, 'ISIC_2019_Test.csv'), index=False)
+        df_test.drop(columns=['path']).to_csv(os.path.join(pred_result_folder_test, 'ISIC_2019_Test.csv'), index=False)
         postfix = 'best_balanced_acc'
         for m in models_to_predict:
             model_filepath = os.path.join(model_folder, "{}_{}.hdf5".format(m['model_name'], postfix))
@@ -140,30 +142,31 @@ def main():
                                                    preprocessing_function=m['preprocessing_function'],
                                                    batch_size=batch_size,
                                                    workers=workers,
-                                                   softmax_save_file_name=os.path.join(pred_result_folder, "{}_{}.csv").format(m['model_name'], postfix),
-                                                   logit_save_file_name=os.path.join(pred_result_folder, "{}_{}_logit.csv").format(m['model_name'], postfix))
+                                                   softmax_save_file_name=os.path.join(pred_result_folder_test, "{}_{}.csv").format(m['model_name'], postfix),
+                                                   logit_save_file_name=os.path.join(pred_result_folder_test, "{}_{}_logit.csv").format(m['model_name'], postfix))
                 del model
                 K.clear_session()
             else:
                 print("\"{}\" doesn't exist".format(model_filepath))
 
         # Ensemble Models' Predictions on Test Data
-        df_ensemble = ensemble_predictions(result_folder=pred_result_folder, category_names=category_names, save_file=False,
+        df_ensemble = ensemble_predictions(result_folder=pred_result_folder_test, category_names=category_names, save_file=False,
                                            model_names=transfer_models, postfixes=[postfix]).drop(columns=['pred_category'])
         if approach == 1:
             # Compute Out-of-Distribution scores
             df_score = compute_out_of_distribution_score(model_folder=model_folder, df=df_test, num_classes=category_num, batch_size=batch_size)
             # Merge ensemble predictions with out-of-Distribution scores
             df_ensemble[unknown_category_name] = df_score['out_dist_score']
-        df_ensemble.to_csv(os.path.join(pred_result_folder, "Ensemble_{}.csv".format(postfix)), index=False)
+        df_ensemble.to_csv(os.path.join(pred_result_folder_test, "Ensemble_{}.csv".format(postfix)), index=False)
 
     # Compute Baseline and ODIN Softmax Scores
     if args.odinscore and approach == 1:
-        compute_baseline_softmax_scores(in_dist_pred_result_folder=pred_result_folder,
+        os.makedirs(softmax_score_folder, exist_ok=True)
+        compute_baseline_softmax_scores(in_dist_pred_result_folder=pred_result_folder_val,
                                         out_dist_pred_result_folder=out_dist_pred_result_folder,
                                         softmax_score_folder=softmax_score_folder)
                                         
-        compute_odin_softmax_scores(in_dist_pred_result_folder=pred_result_folder, in_dist_image_folder=training_image_folder,
+        compute_odin_softmax_scores(in_dist_pred_result_folder=pred_result_folder_val, in_dist_image_folder=training_image_folder,
                                     out_dist_pred_result_folder=out_dist_pred_result_folder, out_dist_image_folder=out_dist_image_folder,
                                     model_folder=model_folder, softmax_score_folder=softmax_score_folder,
                                     num_classes=category_num, batch_size=batch_size)
