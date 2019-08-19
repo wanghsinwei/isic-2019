@@ -16,6 +16,7 @@ This is a [Keras](https://keras.io) with [TensorFlow](https://www.tensorflow.org
 * [OpenCV-Python](https://github.com/skvark/opencv-python)
 * [tqdm](https://github.com/tqdm/tqdm)
 * [Augmentor](https://github.com/mdbloice/Augmentor): A modification of Augmentor 0.2.3 is under [Augmentor](Augmentor/)
+* [Pillow-SIMD](https://github.com/uploadcare/pillow-simd): Not necessary but recommend using it to improve image processing performance. I followed the fastai's [document](https://docs.fast.ai/performance.html#installation) to install it.
 
 ### Datasets
 
