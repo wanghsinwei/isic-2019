@@ -74,4 +74,16 @@ RootFolder
 
 ## Training and Predicting
 
-Follow the steps starting from the **Common Parameters** cell in the notebook [approach_1.ipynb](approach_1.ipynb) and [approach_2.ipynb](approach_2.ipynb) to reproduce training and predicting processes of approach 1 and 2 respectively. You might need to change a few parameters according to the environment.
+Follow the steps starting from the **Common Parameters** cell in the notebook [approach_1.ipynb](approach_1.ipynb) and [approach_2.ipynb](approach_2.ipynb) to reproduce training and predicting processes of approach-1 and 2 respectively. You might need to change a few parameters according to the environment.
+
+### Command-line
+
+Here is an example code of training [DenseNet201](https://keras.io/applications/#densenet), [Xception](https://keras.io/applications/#xception) and [ResNeXt50](https://keras.io/applications/#resnet) models using approach-1. Assuming the path to the data root folder is `/home`.
+```
+python3 main.py /home --approach 1 --training --epoch 100 --batchsize 32 --maxqueuesize 10 --model DenseNet201 Xception ResNeXt50
+```
+
+Use `-h` to show usage messages.
+```
+python3 main.py -h
+```
