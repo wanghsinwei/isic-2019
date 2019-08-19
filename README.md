@@ -1,6 +1,8 @@
 # ISIC 2019 - Skin Lesion Analysis Towards Melanoma Detection
 
-This is a [Keras](https://keras.io) with [TensorFlow](https://www.tensorflow.org/) backend implementation for [ISIC 2019 Challenge](https://challenge2019.isic-archive.com) Task 1: classify dermoscopic images among nine different diagnostic categories without meta-data.
+This is a [Keras](https://keras.io) with [TensorFlow](https://www.tensorflow.org/) backend implementation for [ISIC 2019 Challenge](https://challenge2019.isic-archive.com) Task 1: classify dermoscopic images among nine different diagnostic categories without meta-data. Two approaches are implemented in this repository:
+1. Skin Lesion Classification using Ensemble of Convolutional Neural Networks and Out-of-Distribution Detector
+1. Skin Lesion Classification using Ensemble of Convolutional Neural Networks
 
 ## Getting Started
 
@@ -69,3 +71,7 @@ RootFolder
 │   │   ISIC_0001129.jpg
 │   │   ...
 ```
+
+## Training and Predicting
+
+Follow the steps starting from the **Common Parameters** cell in the notebook [approach_1.ipynb](approach_1.ipynb) and [approach_2.ipynb](approach_2.ipynb) to reproduce training and predicting processes of approach 1 and 2 respectively. You might need to change a few parameters according to the environment.
