@@ -20,7 +20,7 @@ This is a [Keras](https://keras.io) with [TensorFlow](https://www.tensorflow.org
 
 ### Datasets
 
-* [ISIC 2019 Training Data](https://challenge2019.isic-archive.com/data.html#training-data)
+* [ISIC 2019 Training/Test Data](https://challenge2019.isic-archive.com/data.html)
 * [ISIC Archive](https://www.isic-archive.com/#!/topWithHeader/onlyHeaderTop/gallery)
 
 | Diagnostic Category                | Amount |
@@ -39,3 +39,33 @@ After downloading the dataset, all melanosis images can be retrieved from the da
 | Diagnostic Category | Amount |
 | ------------------- | ------ |
 | Melanosis           | 16     |
+
+### Directory & File Structure of Input Data
+
+* Put all data under a root folder like the tree structure shown below.
+  * **ISIC_2019_Training_Input** and **ISIC_2019_Test_Input** folders contain images of ISIC 2019 Training Data and Test Data respectively.
+  * **Out_Distribution** folder contains all out-of-distribution images from both ISIC Archive and Seven-Point datasets.
+  * **ISIC_2019_Training_GroundTruth_DuplicateRemoved.csv** is a copy of ISIC_2019_Training_GroundTruth.csv but removing two entries: ISIC_0067980 and ISIC_0069013.
+```
+RootFolder
+│   ISIC_2019_Training_GroundTruth.csv
+│   ISIC_2019_Training_GroundTruth_DuplicateRemoved.csv
+│
+└───ISIC_2019_Test_Input
+│   │   ISIC_0034321.jpg
+│   │   ISIC_0034322.jpg
+│   │   ...
+│   │
+└───ISIC_2019_Training_Input
+│   │   ISIC_0000000.jpg
+│   │   ISIC_0000001.jpg
+│   │   ...
+│   │
+└───Out_Distribution
+│   │   7pt_Fgl059.jpg
+│   │   7pt_Fhl002.jpg
+│   │   ...
+│   │   ISIC_0001115.jpg
+│   │   ISIC_0001129.jpg
+│   │   ...
+```
