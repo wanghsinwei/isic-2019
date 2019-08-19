@@ -1,6 +1,6 @@
 # ISIC 2019 - Skin Lesion Analysis Towards Melanoma Detection
 
-This is a [Keras](https://keras.io) with [TensorFlow](https://www.tensorflow.org/) backend implementation for [ISIC 2019 Challenge](https://challenge2019.isic-archive.com) Task 1: classify dermoscopic images among nine different diagnostic categories without meta-data. Two approaches are implemented in this repository:
+This is a [Keras](https://keras.io) with [TensorFlow](https://www.tensorflow.org/) backend implementation for [ISIC 2019 Challenge](https://challenge2019.isic-archive.com) Task 1: classify dermoscopic images among nine different diagnostic categories without meta-data. There are two approaches listed below implemented in this repository. The [ODIN (Out-of-DIstribution detector for Neural networks)](https://github.com/facebookresearch/odin) method used in the first approach is re-implemented using Keras.
 1. Skin Lesion Classification using Ensemble of Convolutional Neural Networks and Out-of-Distribution Detector
 1. Skin Lesion Classification using Ensemble of Convolutional Neural Networks
 
@@ -34,7 +34,7 @@ This is a [Keras](https://keras.io) with [TensorFlow](https://www.tensorflow.org
 | Lentigo simplex                    | 22     |
 | Scar                               | 1      |
 
-* [Seven-Point Checklist Dermatology Dataset](http://derm.cs.sfu.ca/)
+* [Seven-Point Checklist Dermatology Dataset](http://derm.cs.sfu.ca/) ([Github](https://github.com/jeremykawahara/derm7pt))
 
 After downloading the dataset, all melanosis images can be retrieved from the dataset by using the [notebook](derm7pt.ipynb).
 
