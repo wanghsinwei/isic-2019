@@ -215,3 +215,26 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}", textcolors=["black", "whit
             texts.append(text)
 
     return texts
+
+
+def plot_prob_bars(img_title, img_path, labels, probs, topk=5, title=None, figsize=(10, 4)):
+    fig, (ax1, ax2) = plt.subplots(figsize=figsize, ncols=2)
+    fig.patch.set_facecolor('white')
+
+    if title is not None:
+        fig.suptitle(title)
+
+    ax1.set_title(img_title)
+    ax1.imshow(plt.imread(img_path))
+
+    # Plot probabilities bar chart
+    ax2.set_title("Top {0} probabilities".format(topk))
+    ax2.barh(np.arange(topk), probs)
+    ax2.set_aspect(0.1)
+    ax2.set_yticks(np.arange(topk))
+    ax2.set_yticklabels(labels, size='medium')
+    ax2.yaxis.tick_right()
+    ax2.set_xlim(0, 1.0)
+    ax2.invert_yaxis()
+    fig.tight_layout(rect=[0, 0.02, 1, 0.96])
+    return fig
