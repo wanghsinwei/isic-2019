@@ -1,6 +1,6 @@
 # ISIC 2019 - Skin Lesion Analysis Towards Melanoma Detection
 
-This is a [Keras](https://keras.io) with [TensorFlow](https://www.tensorflow.org/) backend implementation for [ISIC 2019 Challenge](https://challenge2019.isic-archive.com) Task 1: classify dermoscopic images among nine different diagnostic categories without meta-data. There are two approaches listed below implemented in this repository. The [ODIN (Out-of-DIstribution detector for Neural networks)](https://github.com/facebookresearch/odin) method used in the first approach is re-implemented using Keras.
+This is a [Keras](https://keras.io) with [TensorFlow](https://www.tensorflow.org/) backend implementation for [ISIC 2019 Challenge](https://challenge2019.isic-archive.com) Task 1: classify dermoscopic images among nine different diagnostic categories without meta-data. There are two approaches listed below implemented in this repository. The [ODIN (Out-of-DIstribution detector for Neural networks)](https://github.com/facebookresearch/odin) method used in the first approach was re-implemented using Keras. This is also my capstone project of [Udacity Machine Learning Nanodegree](https://www.udacity.com/). For more details please refer to the [project report](docs/capstone_project_report.pdf).
 1. Skin Lesion Classification using Ensemble of Convolutional Neural Networks and Out-of-Distribution Detector
 1. Skin Lesion Classification using Ensemble of Convolutional Neural Networks
 
