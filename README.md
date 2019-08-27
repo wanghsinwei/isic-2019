@@ -87,3 +87,7 @@ Use `-h` to show usage messages.
 ```
 python3 main.py -h
 ```
+
+## License
+
+[MIT](LICENSE)
