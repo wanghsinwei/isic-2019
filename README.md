@@ -1,8 +1,6 @@
 # ISIC 2019 - Skin Lesion Analysis Towards Melanoma Detection
 
-This is a [Keras](https://keras.io) with [TensorFlow](https://www.tensorflow.org/) backend implementation for [ISIC 2019 Challenge](https://challenge2019.isic-archive.com) Task 1: classify dermoscopic images among nine different diagnostic categories without meta-data. There are two approaches listed below implemented in this repository. The [ODIN (Out-of-DIstribution detector for Neural networks)](https://github.com/facebookresearch/odin) method used in the first approach was re-implemented using Keras. This is also my capstone project of [Udacity Machine Learning Nanodegree](https://www.udacity.com/). For more details please refer to the [project report](docs/capstone_project_report.pdf).
-1. Skin Lesion Classification using Ensemble of Convolutional Neural Networks and Out-of-Distribution Detector
-1. Skin Lesion Classification using Ensemble of Convolutional Neural Networks
+This is a [Keras](https://keras.io) with [TensorFlow](https://www.tensorflow.org/) backend implementation for [ISIC 2019 Challenge](https://challenge2019.isic-archive.com) Task 1: classify dermoscopic images among nine different diagnostic categories without meta-data. The proposed approaches implemented in this repository were ranked 25<sup>th</sup> out of 64 unique teams with Balanced Multiclass Accuracy of 0.505 (0.636 for the 1<sup>st</sup> team). The [ODIN (Out-of-DIstribution detector for Neural networks)](https://github.com/facebookresearch/odin) method used in the first approach was re-implemented using Keras. This is also my capstone project of [Udacity Machine Learning Nanodegree](https://www.udacity.com/course/machine-learning-engineer-nanodegree--nd009t). For more details please refer to the [project report](docs/capstone_project_report.pdf).
 
 ## Getting Started
 
@@ -87,6 +85,19 @@ Use `-h` to show usage messages.
 ```
 python3 main.py -h
 ```
+
+## Testing Results
+
+Please visit [ISIC 2019 Challenge Leaderboards](https://challenge2019.isic-archive.com/leaderboard.html) for complete rankings.
+
+**Team Rankings**
+![Team Rankings](imgs/25-Hsinwei.png)
+
+**Approach Rankings**
+| Rank | Approach Name (129 approaches)                                             | Balanced Multiclass Accuracy |
+| ---- | -------------------------------------------------------------------------- | ---------------------------- |
+| 52   | Convolutional Ensemble with Out-of-Distribution Detector                   | 0.505                        |
+| 57   | Skin Lesion Classification using Ensemble of Convolutional Neural Networks | 0.499                        |
 
 ## License
 
