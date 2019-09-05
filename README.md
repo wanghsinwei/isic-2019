@@ -94,6 +94,7 @@ Please visit [ISIC 2019 Challenge Leaderboards](https://challenge2019.isic-archi
 ![Team Rankings](imgs/25-Hsinwei.png)
 
 **Approach Rankings**
+
 | Rank | Approach Name (129 approaches)                                             | Balanced Multiclass Accuracy |
 | ---- | -------------------------------------------------------------------------- | ---------------------------- |
 | 52   | Convolutional Ensemble with Out-of-Distribution Detector                   | 0.505                        |
