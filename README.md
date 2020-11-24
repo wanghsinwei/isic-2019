@@ -88,7 +88,7 @@ python3 main.py -h
 
 ## Testing Results
 
-Please visit [ISIC 2019 Challenge Leaderboards](https://challenge2019.isic-archive.com/leaderboard.html) for complete rankings.
+Please visit [ISIC 2019 Challenge Leaderboards](https://challenge.isic-archive.com/leaderboards/2019) for complete rankings.
 
 **Team Rankings**
 
